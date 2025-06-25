@@ -10,7 +10,6 @@ import { IoPencil } from "react-icons/io5";
 import toast from "react-hot-toast";
 import { useAuth } from "../../hooks/AuthContext";
 import { useLibrary } from "../../hooks/LibraryContext";
-import { deleteAlbum } from "../../config/api";
 import { albumService } from "../../services/albumService";
 
 const AlbumCard = ({ album }) => {
@@ -86,11 +85,13 @@ const AlbumCard = ({ album }) => {
   const handleDelete = async (e) => {
     e.stopPropagation();
 
-    const confirm = window.confirm("Are you sure you want to delete this album?");
+    const confirm = window.confirm(
+      "Are you sure you want to delete this album?"
+    );
     if (!confirm) return;
 
     try {
-      await deleteAlbum(album._id || album.id);
+      await albumService.deleteAlbum(album._id || album.id);
 
       toast.success("Album deleted!", {
         duration: 3000,
@@ -101,12 +102,11 @@ const AlbumCard = ({ album }) => {
         },
       });
       window.location.reload();
-
-      } catch (error) {
-        toast.error("Failed to delete the album");
-        console.error("Deletion failed:", error);
-        window.location.reload();
-      }
+    } catch (error) {
+      toast.error("Failed to delete the album");
+      console.error("Deletion failed:", error);
+      window.location.reload();
+    }
   };
 
   const handleEditClick = async (e) => {
@@ -251,7 +251,7 @@ const AlbumCard = ({ album }) => {
       {isEditModalOpen &&
         ReactDOM.createPortal(
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-            <div 
+            <div
               className="bg-white rounded-xl p-6 pr-0 w-full max-w-2xl relative"
               onClick={(e) => e.stopPropagation()}
             >
@@ -264,120 +264,126 @@ const AlbumCard = ({ album }) => {
               <h2 className="text-lg font-semibold mb-4 text-gray-800">
                 Edit album
               </h2>
-              <form onSubmit={handleEditSubmit} className="space-y-4 max-h-[calc(100vh-10rem)] pr-6 overflow-y-auto">
-
+              <form
+                onSubmit={handleEditSubmit}
+                className="space-y-4 max-h-[calc(100vh-10rem)] pr-6 overflow-y-auto"
+              >
                 <div className="grid grid-cols-2 gap-4">
                   <input
-                      type="text"
-                      name="title"
-                      placeholder="Title"
-                      value={editData.title}
-                      onChange={handleEditAlbumChange}
-                      required
-                      className="border px-3 py-2 rounded"
+                    type="text"
+                    name="title"
+                    placeholder="Title"
+                    value={editData.title}
+                    onChange={handleEditAlbumChange}
+                    required
+                    className="border px-3 py-2 rounded"
                   />
                   <input
-                      type="text"
-                      name="artist"
-                      placeholder="Artist"
-                      value={editData.artist}
-                      onChange={handleEditAlbumChange}
-                      required
-                      className="border px-3 py-2 rounded"
+                    type="text"
+                    name="artist"
+                    placeholder="Artist"
+                    value={editData.artist}
+                    onChange={handleEditAlbumChange}
+                    required
+                    className="border px-3 py-2 rounded"
                   />
                   <input
-                      type="number"
-                      name="year"
-                      placeholder="Year"
-                      value={editData.year}
-                      onChange={handleEditAlbumChange}
-                      required
-                      className="border px-3 py-2 rounded"
+                    type="number"
+                    name="year"
+                    placeholder="Year"
+                    value={editData.year}
+                    onChange={handleEditAlbumChange}
+                    required
+                    className="border px-3 py-2 rounded"
                   />
                   <input
-                      type="text"
-                      name="label"
-                      placeholder="Label"
-                      value={editData.label}
-                      onChange={handleEditAlbumChange}
-                      className="border px-3 py-2 rounded"
+                    type="text"
+                    name="label"
+                    placeholder="Label"
+                    value={editData.label}
+                    onChange={handleEditAlbumChange}
+                    className="border px-3 py-2 rounded"
                   />
                   <input
-                      type="text"
-                      name="coverUrl"
-                      placeholder="Link to the cover image"
-                      value={editData.coverUrl}
-                      onChange={handleEditAlbumChange}
-                      className="col-span-2 border px-3 py-2 rounded"
+                    type="text"
+                    name="coverUrl"
+                    placeholder="Link to the cover image"
+                    value={editData.coverUrl}
+                    onChange={handleEditAlbumChange}
+                    className="col-span-2 border px-3 py-2 rounded"
                   />
                 </div>
 
                 <div className="mt-6">
                   <h3 className="font-semibold text-gray-700 mb-2">Tracks</h3>
                   {editData.tracks.map((track, index) => (
-                      <div key={index} className="grid grid-cols-6 gap-2 mb-2 items-center">
-                        <input
-                            type="text"
-                            name="title"
-                            placeholder="Title"
-                            value={track.title}
-                            onChange={(e) => handleEditTrackChange(index, e)}
-                            className="col-span-2 border px-2 py-1 rounded"
-                            required
-                        />
-                        <input
-                            type="text"
-                            name="artist"
-                            placeholder="Artist"
-                            value={track.artist}
-                            onChange={(e) => handleEditTrackChange(index, e)}
-                            className="col-span-2 border px-2 py-1 rounded"
-                        />
-                        <input
-                            type="number"
-                            name="length"
-                            placeholder="Length (seconds)"
-                            value={track.length}
-                            onChange={(e) => handleEditTrackChange(index, e)}
-                            required
-                            className="col-span-2 border px-2 py-1 rounded"
-                        />
-                        <input
-                            type="text"
-                            name="genre"
-                            placeholder="Genre"
-                            value={track.genre}
-                            onChange={(e) => handleEditTrackChange(index, e)}
-                            className="col-span-2 border px-2 py-1 rounded"
-                        />
-                        <input
-                            type="number"
-                            name="year"
-                            placeholder="Year"
-                            value={track.year}
-                            onChange={(e) => handleEditTrackChange(index, e)}
-                            className="border px-2 py-1 rounded"
-                        />
-                        <input
-                            type="number"
-                            name="nr"
-                            placeholder="Nr"
-                            value={track.nr}
-                            onChange={(e) => handleEditTrackChange(index, e)}
-                            className="border px-2 py-1 rounded"
-                        />
-                        <button
-                            type="button"
-                            onClick={() => handleRemoveEditTrack(index)}
-                            className="col-span-2 bg-red-500 px-2 py-1 text-white hover:bg-red-700 rounded">
-                          Remove
-                        </button>
-                      </div>
+                    <div
+                      key={index}
+                      className="grid grid-cols-6 gap-2 mb-2 items-center"
+                    >
+                      <input
+                        type="text"
+                        name="title"
+                        placeholder="Title"
+                        value={track.title}
+                        onChange={(e) => handleEditTrackChange(index, e)}
+                        className="col-span-2 border px-2 py-1 rounded"
+                        required
+                      />
+                      <input
+                        type="text"
+                        name="artist"
+                        placeholder="Artist"
+                        value={track.artist}
+                        onChange={(e) => handleEditTrackChange(index, e)}
+                        className="col-span-2 border px-2 py-1 rounded"
+                      />
+                      <input
+                        type="number"
+                        name="length"
+                        placeholder="Length (seconds)"
+                        value={track.length}
+                        onChange={(e) => handleEditTrackChange(index, e)}
+                        required
+                        className="col-span-2 border px-2 py-1 rounded"
+                      />
+                      <input
+                        type="text"
+                        name="genre"
+                        placeholder="Genre"
+                        value={track.genre}
+                        onChange={(e) => handleEditTrackChange(index, e)}
+                        className="col-span-2 border px-2 py-1 rounded"
+                      />
+                      <input
+                        type="number"
+                        name="year"
+                        placeholder="Year"
+                        value={track.year}
+                        onChange={(e) => handleEditTrackChange(index, e)}
+                        className="border px-2 py-1 rounded"
+                      />
+                      <input
+                        type="number"
+                        name="nr"
+                        placeholder="Nr"
+                        value={track.nr}
+                        onChange={(e) => handleEditTrackChange(index, e)}
+                        className="border px-2 py-1 rounded"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveEditTrack(index)}
+                        className="col-span-2 bg-red-500 px-2 py-1 text-white hover:bg-red-700 rounded"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   ))}
                   <button
-                      type="button"
-                      onClick={handleAddEditTrack}
-                      className="mt-2 text-blue-500 hover:underline text-sm"
+                    type="button"
+                    onClick={handleAddEditTrack}
+                    className="mt-2 text-blue-500 hover:underline text-sm"
                   >
                     + Add another track
                   </button>
@@ -392,8 +398,8 @@ const AlbumCard = ({ album }) => {
               </form>
             </div>
           </div>,
-        document.body
-      )}
+          document.body
+        )}
     </div>
   );
 };
@@ -458,10 +464,12 @@ export const AddAlbumCard = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Walidacja: przynajmniej 1 utwór i wymagane pola
     if (!albumData.title || !albumData.artist || albumData.tracks.length < 1) {
-      toast.error("Album must have a title, an artist, a release year and at least one track.");
+      toast.error(
+        "Album must have a title, an artist, a release year and at least one track."
+      );
       return;
     }
 
@@ -517,7 +525,10 @@ export const AddAlbumCard = () => {
               Add new album
             </h2>
 
-            <form onSubmit={handleSubmit} className="space-y-4 max-h-[calc(100vh-10rem)] pr-6 overflow-y-auto">
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-4 max-h-[calc(100vh-10rem)] pr-6 overflow-y-auto"
+            >
               <div className="grid grid-cols-2 gap-4">
                 <input
                   type="text"
@@ -567,7 +578,10 @@ export const AddAlbumCard = () => {
               <div className="mt-6">
                 <h3 className="font-semibold text-gray-700 mb-2">Tracks</h3>
                 {albumData.tracks.map((track, index) => (
-                  <div key={index} className="grid grid-cols-6 gap-2 mb-2 items-center">
+                  <div
+                    key={index}
+                    className="grid grid-cols-6 gap-2 mb-2 items-center"
+                  >
                     <input
                       type="text"
                       name="title"
@@ -586,21 +600,21 @@ export const AddAlbumCard = () => {
                       className="col-span-2 border px-2 py-1 rounded"
                     />
                     <input
-                        type="number"
-                        name="length"
-                        placeholder="Length (seconds)"
-                        value={track.length}
-                        onChange={(e) => handleTrackChange(index, e)}
-                        required
-                        className="col-span-2 border px-2 py-1 rounded"
+                      type="number"
+                      name="length"
+                      placeholder="Length (seconds)"
+                      value={track.length}
+                      onChange={(e) => handleTrackChange(index, e)}
+                      required
+                      className="col-span-2 border px-2 py-1 rounded"
                     />
                     <input
-                        type="text"
-                        name="genre"
-                        placeholder="Genre"
-                        value={track.genre}
-                        onChange={(e) => handleTrackChange(index, e)}
-                        className="col-span-2 border px-2 py-1 rounded"
+                      type="text"
+                      name="genre"
+                      placeholder="Genre"
+                      value={track.genre}
+                      onChange={(e) => handleTrackChange(index, e)}
+                      className="col-span-2 border px-2 py-1 rounded"
                     />
                     <input
                       type="number"
@@ -619,10 +633,11 @@ export const AddAlbumCard = () => {
                       className="border px-2 py-1 rounded"
                     />
                     <button
-                        type="button"
-                        onClick={() => handleRemoveTrack(index)}
-                        className="col-span-2 bg-red-500 px-2 py-1 text-white hover:bg-red-700 rounded">
-                        Remove
+                      type="button"
+                      onClick={() => handleRemoveTrack(index)}
+                      className="col-span-2 bg-red-500 px-2 py-1 text-white hover:bg-red-700 rounded"
+                    >
+                      Remove
                     </button>
                   </div>
                 ))}
