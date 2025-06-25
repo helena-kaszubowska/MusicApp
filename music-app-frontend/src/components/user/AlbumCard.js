@@ -5,7 +5,6 @@ import { FaPlay } from "react-icons/fa";
 import { IoAddCircleOutline, IoCheckmarkCircle } from "react-icons/io5";
 import { IoMdTrash } from "react-icons/io";
 import { IoIosAdd } from "react-icons/io";
-import { IoMdCloseCircle } from "react-icons/io";
 import { IoPencil } from "react-icons/io5";
 import toast from "react-hot-toast";
 import { useAuth } from "../../hooks/AuthContext";
@@ -289,25 +288,31 @@ export const AddAlbumCard = () => {
         <IoIosAdd className="w-12 h-12" />
       </button>
 
-      <AddAlbumForm
-        isModalOpen={isModalOpen}
-        setIsModalOpen={setIsModalOpen}
-        albumData={albumData}
-        setAlbumData={setAlbumData}
-        onSuccess={() => {
-          setAlbumData({
-            title: "",
-            artist: "",
-            year: "",
-            label: "",
-            coverUrl: "",
-            tracks: [
-              { title: "", artist: "", year: "", length: "", genre: "", nr: "" },
-            ],
-          });
-          window.location.reload();
-        }}
-      />
+      {ReactDOM.createPortal(
+        <AnimatePresence>
+          {isModalOpen &&
+            <AddAlbumForm
+              isModalOpen={isModalOpen}
+              setIsModalOpen={setIsModalOpen}
+              albumData={albumData}
+              setAlbumData={setAlbumData}
+              onSuccess={() => {
+                setAlbumData({
+                  title: "",
+                  artist: "",
+                  year: "",
+                  label: "",
+                  coverUrl: "",
+                  tracks: [
+                    { title: "", artist: "", year: "", length: "", genre: "", nr: "" },
+                  ],
+                });
+                window.location.reload();
+              }}
+            />}
+      </AnimatePresence>,
+      document.body
+      )}
     </>
   );
 };
