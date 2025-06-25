@@ -68,82 +68,78 @@ export const AddAlbumForm = ({
   if (!isModalOpen) return null;
 
   return (
-    <AnimatePresence>
-      {isModalOpen && (
-        <Backdrop onClose={() => setIsModalOpen(false)} key="add-album-backdrop">
-          <motion.div
-            className="bg-white rounded-xl p-6 pr-0 w-full max-w-2xl relative"
-            variants={dropIn}
-            initial="initial"
-            animate="visible"
-            exit="exit"
-            transition={{
-              y: { type: "spring", bounce: 0.2 },
-              duration: 0.3
-            }}
-          >
-            <button
-              className="absolute top-2 right-2 text-gray-500 hover:text-red-500 text-xl"
-              onClick={() => setIsModalOpen(false)}
-            >
-              <IoMdCloseCircle className="w-7 h-7" />
-            </button>
-            <h2 className="text-lg font-semibold mb-4 text-gray-800">Add new album</h2>
+    <Backdrop onClose={() => setIsModalOpen(false)} key="add-album-backdrop">
+      <motion.div
+        className="bg-white rounded-xl p-6 pr-0 w-full max-w-2xl relative"
+        variants={dropIn}
+        initial="initial"
+        animate="visible"
+        exit="exit"
+        transition={{
+          y: { type: "spring", bounce: 0.2 },
+          duration: 0.3
+        }}
+      >
+        <button
+          className="absolute top-2 right-2 text-gray-500 hover:text-red-500 text-xl"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <IoMdCloseCircle className="w-7 h-7" />
+        </button>
+        <h2 className="text-lg font-semibold mb-4 text-gray-800">Add new album</h2>
 
-            <form onSubmit={handleSubmit} className="space-y-4 max-h-[calc(100vh-10rem)] pr-6 overflow-y-auto">
-              <div className="grid grid-cols-2 gap-4">
-                {["title", "artist", "year", "label", "coverUrl"].map((field, idx) => (
+        <form onSubmit={handleSubmit} className="space-y-4 max-h-[calc(100vh-10rem)] pr-6 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-4">
+            {["title", "artist", "year", "label", "coverUrl"].map((field, idx) => (
+              <input
+                key={field}
+                type={field === "year" ? "number" : "text"}
+                name={field}
+                placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+                value={albumData[field]}
+                onChange={handleAlbumChange}
+                required={["title", "artist", "year"].includes(field)}
+                className={`border px-3 py-2 rounded ${field === "coverUrl" ? "col-span-2" : ""}`}
+              />
+            ))}
+          </div>
+
+          <div className="mt-6">
+            <h3 className="font-semibold text-gray-700 mb-2">Tracks</h3>
+            {albumData.tracks.map((track, index) => (
+              <div key={index} className="grid grid-cols-6 gap-2 mb-2 items-center">
+                {["title", "artist", "length", "genre", "year", "nr"].map((field) => (
                   <input
                     key={field}
-                    type={field === "year" ? "number" : "text"}
+                    type={["length", "year", "nr"].includes(field) ? "number" : "text"}
                     name={field}
-                    placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
-                    value={albumData[field]}
-                    onChange={handleAlbumChange}
-                    required={["title", "artist", "year"].includes(field)}
-                    className={`border px-3 py-2 rounded ${field === "coverUrl" ? "col-span-2" : ""}`}
+                    placeholder={field}
+                    value={track[field]}
+                    onChange={(e) => handleTrackChange(index, e)}
+                    className="border px-2 py-1 rounded"
+                    required={["title", "length"].includes(field)}
                   />
                 ))}
-              </div>
-
-              <div className="mt-6">
-                <h3 className="font-semibold text-gray-700 mb-2">Tracks</h3>
-                {albumData.tracks.map((track, index) => (
-                  <div key={index} className="grid grid-cols-6 gap-2 mb-2 items-center">
-                    {["title", "artist", "length", "genre", "year", "nr"].map((field) => (
-                      <input
-                        key={field}
-                        type={["length", "year", "nr"].includes(field) ? "number" : "text"}
-                        name={field}
-                        placeholder={field}
-                        value={track[field]}
-                        onChange={(e) => handleTrackChange(index, e)}
-                        className="border px-2 py-1 rounded"
-                        required={["title", "length"].includes(field)}
-                      />
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTrack(index)}
-                      className="col-span-2 bg-red-500 px-2 py-1 text-white hover:bg-red-700 rounded"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-                <button type="button" onClick={handleAddTrack} className="mt-2 text-blue-500 hover:underline text-sm">
-                  + Add another track
+                <button
+                  type="button"
+                  onClick={() => handleRemoveTrack(index)}
+                  className="col-span-2 bg-red-500 px-2 py-1 text-white hover:bg-red-700 rounded"
+                >
+                  Remove
                 </button>
               </div>
+            ))}
+            <button type="button" onClick={handleAddTrack} className="mt-2 text-blue-500 hover:underline text-sm">
+              + Add another track
+            </button>
+          </div>
 
-              <button type="submit" className="mt-4 bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition">
-                Add album
-              </button>
-            </form>
-          </motion.div>
-        </Backdrop>
-        )}
-    </AnimatePresence>
+          <button type="submit" className="mt-4 bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition">
+            Add album
+          </button>
+        </form>
+      </motion.div>
+    </Backdrop>
   );
 };
 
