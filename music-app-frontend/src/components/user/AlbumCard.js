@@ -12,6 +12,7 @@ import { useAuth } from "../../hooks/AuthContext";
 import { useLibrary } from "../../hooks/LibraryContext";
 import { albumService } from "../../services/albumService";
 import { AddAlbumForm, EditAlbumForm } from "./AlbumForms";
+import { AnimatePresence } from "motion/react";
 
 const AlbumCard = ({ album }) => {
   const navigate = useNavigate();
@@ -90,7 +91,7 @@ const AlbumCard = ({ album }) => {
     if (!confirm) return;
 
     try {
-      await deleteAlbum(album._id || album.id);
+      await albumService.deleteAlbum(album._id || album.id);
 
       toast.success("Album deleted!", {
         duration: 3000,
@@ -102,11 +103,11 @@ const AlbumCard = ({ album }) => {
       });
       window.location.reload();
 
-      } catch (error) {
-        toast.error("Failed to delete the album");
-        console.error("Deletion failed:", error);
-        window.location.reload();
-      }
+    } catch (error) {
+      toast.error("Failed to delete the album");
+      console.error("Deletion failed:", error);
+      window.location.reload();
+    }
   };
 
   const handleEditClick = async (e) => {
@@ -211,9 +212,8 @@ const AlbumCard = ({ album }) => {
             <button
               onClick={handleAddToLibrary}
               disabled={isAdding}
-              className={`transition-all duration-300 hover:scale-110 ${
-                isAdded ? "text-green-400" : "text-purple-300 hover:text-white"
-              }`}
+              className={`transition-all duration-300 hover:scale-110 ${isAdded ? "text-green-400" : "text-purple-300 hover:text-white"
+                }`}
             >
               {isAdded ? (
                 <IoCheckmarkCircle className="w-5 h-5 animate-bounce" />
@@ -236,26 +236,28 @@ const AlbumCard = ({ album }) => {
             {isInLibrary
               ? "Already in Library"
               : isAdded
-              ? "Added!"
-              : isAdding
-              ? "Adding..."
-              : "Add to Library"}
+                ? "Added!"
+                : isAdding
+                  ? "Adding..."
+                  : "Add to Library"}
           </span>
         </div>
       </div>
-      {isEditModalOpen &&
-        ReactDOM.createPortal(
-          <EditAlbumForm
-            editData={editData}
-            setEditData={setEditData}
-            handleEditTrackChange={handleEditTrackChange}
-            handleAddEditTrack={handleAddEditTrack}
-            handleRemoveEditTrack={handleRemoveEditTrack}
-            handleEditSubmit={handleEditSubmit}
-            setIsEditModalOpen={setIsEditModalOpen}
-          />,
-          document.body
-        )}
+      {ReactDOM.createPortal(
+        <AnimatePresence>
+          {isEditModalOpen &&
+            <EditAlbumForm
+              editData={editData}
+              setEditData={setEditData}
+              handleEditTrackChange={handleEditTrackChange}
+              handleAddEditTrack={handleAddEditTrack}
+              handleRemoveEditTrack={handleRemoveEditTrack}
+              handleEditSubmit={handleEditSubmit}
+              setIsEditModalOpen={setIsEditModalOpen}
+            />}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };
