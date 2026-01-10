@@ -1,20 +1,51 @@
 using System.Text;
-using EasyNetQ;
+using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.DataModel;
+using Amazon.SimpleNotificationService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using MongoDB.Driver;
 using MusicAppAPI.Services;
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
-// Database connection
-builder.Services.AddSingleton(
-    new MongoClient($"mongodb+srv://{Environment.GetEnvironmentVariable("DB_USER")}:{Environment.GetEnvironmentVariable("DB_PASSWORD")}@mongocluster.yl7u1.mongodb.net/?retryWrites=true&w=majority&appName=MongoCluster")
-        .GetDatabase(Environment.GetEnvironmentVariable("DB_NAME")));
+// Load configuration from AWS Parameter Store
+// In production, you would typically use the default credentials chain.
+// For local development with LocalStack, you might need custom configuration or just rely on appsettings.
+if (!builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddSystemsManager("/music-app/api", TimeSpan.FromMinutes(5));
+}
+
+// DynamoDB connection
+var dynamoDbConfig = new AmazonDynamoDBConfig();
+var serviceUrl = builder.Configuration["DynamoDB:ServiceURL"];
+if (!string.IsNullOrEmpty(serviceUrl))
+{
+    dynamoDbConfig.ServiceURL = serviceUrl;
+}
+
+var client = new AmazonDynamoDBClient(dynamoDbConfig);
+builder.Services.AddSingleton<IAmazonDynamoDB>(client);
+builder.Services.AddSingleton<IDynamoDBContext, DynamoDBContext>();
+
+// AWS SNS Configuration
+var snsConfig = new AmazonSimpleNotificationServiceConfig();
+var snsServiceUrl = builder.Configuration["SNS:ServiceURL"];
+if (!string.IsNullOrEmpty(snsServiceUrl))
+{
+    snsConfig.ServiceURL = snsServiceUrl;
+}
+var snsClient = new AmazonSimpleNotificationServiceClient(snsConfig);
+builder.Services.AddSingleton<IAmazonSimpleNotificationService>(snsClient);
 
 // JWT Configuration
-byte[] key = Encoding.ASCII.GetBytes(Environment.GetEnvironmentVariable("JWT_KEY")!);
+var jwtKey = builder.Configuration["JWT_KEY"];
+if (string.IsNullOrEmpty(jwtKey))
+{
+    throw new InvalidOperationException("JWT_KEY is not configured.");
+}
+var key = Encoding.ASCII.GetBytes(jwtKey);
 
 builder.Services.AddAuthentication(options =>
     {
@@ -82,12 +113,7 @@ builder.Services.AddCors(options =>
         });
 });
 
-// Register RabbitMQ
-var rabbitMQHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "rabbitmq";
-var connectionString = $"host={rabbitMQHost};port=5672;username=guest;password=guest";
-builder.Services.AddSingleton(RabbitHutch.CreateBus(connectionString));
-
-WebApplication app = builder.Build();
+var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -97,13 +123,6 @@ if (app.Environment.IsDevelopment())
 }
 
 // app.UseHttpsRedirection();
-
-// Middleware to set RabbitMQ host in HttpContext.Items
-app.Use(async (context, next) =>
-{
-    context.Items["RabbitMQHost"] = rabbitMQHost;
-    await next(context);
-});
 
 app.UseCors();
 

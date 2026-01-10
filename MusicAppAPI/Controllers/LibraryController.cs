@@ -1,7 +1,7 @@
 using System.Security.Claims;
+using Amazon.DynamoDBv2.DataModel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Driver;
 using MusicAppAPI.Models;
 
 namespace MusicAppAPI.Controllers;
@@ -11,11 +11,11 @@ namespace MusicAppAPI.Controllers;
 [Route("api/[controller]")]
 public class LibraryController : ControllerBase
 {
-    private readonly IMongoDatabase _database;
+    private readonly IDynamoDBContext _context;
 
-    public LibraryController(IMongoDatabase database)
+    public LibraryController(IDynamoDBContext context)
     {
-        _database = database;
+        _context = context;
     }
     
     public class AlbumIdRequest
@@ -38,15 +38,20 @@ public class LibraryController : ControllerBase
             if (string.IsNullOrEmpty(userId)) return StatusCode(StatusCodes.Status401Unauthorized);
             
             // Find the user in the database to get access to the user's library
-            IMongoCollection<User>? usersCollection = _database.GetCollection<User>("users");
-            FilterDefinition<User>? userFilter = Builders<User>.Filter.Eq(u => u.Id, userId);
-            User? foundUser = await usersCollection.Find(userFilter).FirstOrDefaultAsync();
+            User? foundUser = await _context.LoadAsync<User>(userId);
             if (foundUser == null) return StatusCode(StatusCodes.Status404NotFound);
             
             // User documents only store tracks' ids, so fetch of the track collection is needed
-            IMongoCollection<Track>? tracksCollection = _database.GetCollection<Track>("tracks");
-            FilterDefinition<Track>? trackFilter = Builders<Track>.Filter.In(t => t.Id, foundUser.LibraryTracks);
-            return Ok(await tracksCollection.Find(trackFilter).ToListAsync());
+            if (foundUser.LibraryTracks == null || foundUser.LibraryTracks.Count == 0)
+                return Ok(new List<Track>());
+
+            var trackBatch = _context.CreateBatchGet<Track>();
+            foreach (var trackId in foundUser.LibraryTracks)
+            {
+                trackBatch.AddKey(trackId);
+            }
+            await trackBatch.ExecuteAsync();
+            return Ok(trackBatch.Results);
         }
         catch (Exception ex)
         {
@@ -65,13 +70,18 @@ public class LibraryController : ControllerBase
             if (string.IsNullOrEmpty(userId)) return StatusCode(StatusCodes.Status401Unauthorized);
             
             // Find the user in the database to get access to the user's library
-            IMongoCollection<User>? usersCollection = _database.GetCollection<User>("users");
-            FilterDefinition<User>? filter = Builders<User>.Filter.Eq(u => u.Id, userId);
+            User? user = await _context.LoadAsync<User>(userId);
+            if (user == null) return StatusCode(StatusCodes.Status401Unauthorized);
             
             // Add track to the user's library by id if it's not already added
-            UpdateDefinition<User>? updateDefinition = Builders<User>.Update.AddToSet(u => u.LibraryTracks, trackId);
-            UpdateResult? result = await usersCollection.UpdateOneAsync(filter, updateDefinition);
-            return result.MatchedCount == 0 ? StatusCode(StatusCodes.Status401Unauthorized) : StatusCode(StatusCodes.Status200OK);
+            if (user.LibraryTracks == null) user.LibraryTracks = new List<string>();
+            if (!user.LibraryTracks.Contains(trackId))
+            {
+                user.LibraryTracks.Add(trackId);
+                await _context.SaveAsync(user);
+            }
+            
+            return StatusCode(StatusCodes.Status200OK);
         }
         catch (Exception ex)
         {
@@ -90,15 +100,18 @@ public class LibraryController : ControllerBase
             if (string.IsNullOrEmpty(userId)) return StatusCode(StatusCodes.Status401Unauthorized);
             
             // Find the user in the database to get access to the user's library
-            IMongoCollection<User>? usersCollection = _database.GetCollection<User>("users");
-            FilterDefinition<User>? filter = Builders<User>.Filter.Eq(u => u.Id, userId);
+            User? user = await _context.LoadAsync<User>(userId);
+            if (user == null) return StatusCode(StatusCodes.Status401Unauthorized);
             
             // Remove track from the user's library by id
-            UpdateDefinition<User>? updateDefinition = Builders<User>.Update.Pull(u => u.LibraryTracks, trackId);
-            UpdateResult? result = await usersCollection.UpdateOneAsync(filter, updateDefinition);
-            return result.MatchedCount == 0 ? StatusCode(StatusCodes.Status401Unauthorized) : 
-                result.ModifiedCount == 0 ? StatusCode(StatusCodes.Status400BadRequest) : 
-                StatusCode(StatusCodes.Status200OK);
+            if (user.LibraryTracks != null && user.LibraryTracks.Contains(trackId))
+            {
+                user.LibraryTracks.Remove(trackId);
+                await _context.SaveAsync(user);
+                return StatusCode(StatusCodes.Status200OK);
+            }
+            
+            return StatusCode(StatusCodes.Status400BadRequest);
         }
         catch (Exception ex)
         {
@@ -117,18 +130,20 @@ public class LibraryController : ControllerBase
             if (string.IsNullOrEmpty(userId)) return StatusCode(StatusCodes.Status401Unauthorized);
             
             // Find the user in the database to get access to the user's library
-            IMongoCollection<User>? usersCollection = _database.GetCollection<User>("users");
-            FilterDefinition<User>? userFilter = Builders<User>.Filter.Eq(u => u.Id, userId);
-            User? foundUser = await usersCollection.Find(userFilter).FirstOrDefaultAsync();
+            User? foundUser = await _context.LoadAsync<User>(userId);
             if (foundUser == null) return StatusCode(StatusCodes.Status404NotFound);
             
             // User documents only store albums' ids, so fetch of the album collection is needed
-            IMongoCollection<Album>? albumsCollection = _database.GetCollection<Album>("albums");
-            FilterDefinition<Album>? albumFilter = Builders<Album>.Filter.In(a => a.Id, foundUser.LibraryAlbums);
-            
-            // When requesting all the albums, tracks are usually not needed and create too much boilerplate
-            ProjectionDefinition<Album>? projection = Builders<Album>.Projection.Exclude("tracks");
-            return Ok(await albumsCollection.Find(albumFilter).Project<Album>(projection).ToListAsync());
+            if (foundUser.LibraryAlbums == null || foundUser.LibraryAlbums.Count == 0)
+                return Ok(new List<Album>());
+
+            var albumBatch = _context.CreateBatchGet<Album>();
+            foreach (var albumId in foundUser.LibraryAlbums)
+            {
+                albumBatch.AddKey(albumId);
+            }
+            await albumBatch.ExecuteAsync();
+            return Ok(albumBatch.Results);
         }
         catch (Exception ex)
         {
@@ -147,14 +162,18 @@ public class LibraryController : ControllerBase
             if (string.IsNullOrEmpty(userId)) return StatusCode(StatusCodes.Status401Unauthorized);
             
             // Find the user in the database to get the user's library
-            IMongoCollection<User>? usersCollection = _database.GetCollection<User>("users");
-            FilterDefinition<User>? filter = Builders<User>.Filter.Eq(u => u.Id, userId);
+            User? user = await _context.LoadAsync<User>(userId);
+            if (user == null) return StatusCode(StatusCodes.Status401Unauthorized);
             
             // Add album to the user's library by id if it's not already added
-            UpdateDefinition<User>? updateDefinition = Builders<User>.Update.AddToSet(u => u.LibraryAlbums, albumId);
-            UpdateResult? result = await usersCollection.UpdateOneAsync(filter, updateDefinition);
-            return result.MatchedCount == 0 ? StatusCode(StatusCodes.Status401Unauthorized) 
-                : StatusCode(StatusCodes.Status200OK);
+            if (user.LibraryAlbums == null) user.LibraryAlbums = new List<string>();
+            if (!user.LibraryAlbums.Contains(albumId))
+            {
+                user.LibraryAlbums.Add(albumId);
+                await _context.SaveAsync(user);
+            }
+            
+            return StatusCode(StatusCodes.Status200OK);
         }
         catch (Exception ex)
         {
@@ -173,15 +192,18 @@ public class LibraryController : ControllerBase
             if (string.IsNullOrEmpty(userId)) return StatusCode(StatusCodes.Status401Unauthorized);
             
             // Find the user in the database to get the user's library
-            IMongoCollection<User>? usersCollection = _database.GetCollection<User>("users");
-            FilterDefinition<User>? filter = Builders<User>.Filter.Eq(u => u.Id, userId);
+            User? user = await _context.LoadAsync<User>(userId);
+            if (user == null) return StatusCode(StatusCodes.Status401Unauthorized);
             
             // Remove album from the user's library by id
-            UpdateDefinition<User>? updateDefinition = Builders<User>.Update.Pull(u => u.LibraryAlbums, albumId);
-            UpdateResult? result = await usersCollection.UpdateOneAsync(filter, updateDefinition);
-            return result.MatchedCount == 0 ? StatusCode(StatusCodes.Status401Unauthorized) : 
-                result.ModifiedCount == 0 ? StatusCode(StatusCodes.Status400BadRequest) : 
-                StatusCode(StatusCodes.Status200OK);
+            if (user.LibraryAlbums != null && user.LibraryAlbums.Contains(albumId))
+            {
+                user.LibraryAlbums.Remove(albumId);
+                await _context.SaveAsync(user);
+                return StatusCode(StatusCodes.Status200OK);
+            }
+            
+            return StatusCode(StatusCodes.Status400BadRequest);
         }
         catch (Exception ex)
         {

@@ -1,52 +1,62 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Amazon.DynamoDBv2.DataModel;
+using Amazon.DynamoDBv2.DocumentModel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
-using MongoDB.Driver;
 using MusicAppAPI.Models;
 
 namespace MusicAppAPI.Services;
 
 public class UserService : IUserService
 {
-    private readonly IMongoDatabase _database;
+    private readonly IDynamoDBContext _context;
     
-    public UserService(IMongoDatabase database)
+    public UserService(IDynamoDBContext context)
     {
-        _database = database;
+        _context = context;
     }
     
     public async Task<User?> RegisterAsync(string email, string password)
     {
-        IMongoCollection<User>? usersCollection = _database.GetCollection<User>("users");
-        
-        // Check if a user with the specified email already exists    
-        FilterDefinition<User>? filter = Builders<User>.Filter.Eq(u => u.Email, email);
-        if (await usersCollection.CountDocumentsAsync(filter) > 0) return null;
+        // Check if a user with the specified email already exists
+        // Since email is not the primary key, we need to scan or query (if GSI exists).
+        // For simplicity, we'll scan. In production, use GSI on Email.
+        var conditions = new List<ScanCondition>
+        {
+            new ScanCondition("Email", ScanOperator.Equal, email)
+        };
+        var existingUsers = await _context.ScanAsync<User>(conditions).GetRemainingAsync();
+        if (existingUsers.Count > 0) return null;
         
         User user = new()
         {
+            Id = Guid.NewGuid().ToString(),
             Email = email,
             // Replace the password with a hash generated for it
             Password = new PasswordHasher<object?>().HashPassword(null, password)
         };
 
         // The first ever user automatically becomes an admin
-        long count = await usersCollection.CountDocumentsAsync(_ => true);
-        if (count == 0) user.Roles = ["admin"];
+        // This is inefficient with DynamoDB scan, but keeping logic consistent.
+        var allUsers = await _context.ScanAsync<User>(new List<ScanCondition>()).GetRemainingAsync();
+        if (allUsers.Count == 0) user.Roles = ["admin"];
         
-        await usersCollection.InsertOneAsync(user);
+        await _context.SaveAsync(user);
         return user;
     }
     
     public async Task<User?> AuthenticateAsync(string email, string password)
     {
-        IMongoCollection<User>? usersCollection = _database.GetCollection<User>("users");
-            
         // Check if a user with the specified email exists    
-        FilterDefinition<User>? filter = Builders<User>.Filter.Eq(u => u.Email, email);
-        User? user = await usersCollection.Find(filter).FirstOrDefaultAsync();
+        var conditions = new List<ScanCondition>
+        {
+            new ScanCondition("Email", ScanOperator.Equal, email)
+        };
+        var users = await _context.ScanAsync<User>(conditions).GetRemainingAsync();
+        User? user = users.FirstOrDefault();
+        
         if (user == null) return null;
         
         // Check if the provided password is correct    
@@ -62,14 +72,25 @@ public class UserService : IUserService
 
     public async Task<bool> SetRoleAsync(string email, string role)
     {
-        IMongoCollection<User>? usersCollection = _database.GetCollection<User>("users");
-        
         // Find a user with the specified email
-        FilterDefinition<User>? filter = Builders<User>.Filter.Eq(u => u.Email, email);
+        var conditions = new List<ScanCondition>
+        {
+            new ScanCondition("Email", ScanOperator.Equal, email)
+        };
+        var users = await _context.ScanAsync<User>(conditions).GetRemainingAsync();
+        User? user = users.FirstOrDefault();
+        
+        if (user == null) return false;
+
         // Add the role only if it doesn't exist already (avoid duplicate roles)
-        UpdateDefinition<User>? update = Builders<User>.Update.AddToSet(user=> user.Roles, role);
-        // If the user is found, the role has been assigned either previously or now
-        return (await usersCollection.UpdateOneAsync(filter, update)).MatchedCount > 0;
+        if (user.Roles == null) user.Roles = new List<string>();
+        if (!user.Roles.Contains(role))
+        {
+            user.Roles.Add(role);
+            await _context.SaveAsync(user);
+        }
+        
+        return true;
     }
     
     private string CreateToken(User user)

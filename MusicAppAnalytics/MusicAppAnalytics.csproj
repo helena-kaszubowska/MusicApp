@@ -7,7 +7,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="EasyNetQ" Version="7.8.0" />
+        <PackageReference Include="Amazon.Extensions.Configuration.SystemsManager" Version="6.0.0" />
+        <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.300" />
+        <PackageReference Include="AWSSDK.SimpleNotificationService" Version="3.7.300" />
+        <PackageReference Include="AWSSDK.SQS" Version="3.7.300" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2"/>
     </ItemGroup>

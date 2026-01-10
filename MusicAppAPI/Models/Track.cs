@@ -1,46 +1,44 @@
 ﻿using System.Text.Json.Serialization;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
+using Amazon.DynamoDBv2.DataModel;
 
 namespace MusicAppAPI.Models;
 
+[DynamoDBTable("Tracks")]
 public class Track
 {
-    [BsonRepresentation(BsonType.ObjectId)]
+    [DynamoDBHashKey("id")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Id { get; set; }
     
-    [BsonElement("title")]
+    [DynamoDBProperty("title")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Title { get; set; }
     
-    [BsonElement("artist")]
+    [DynamoDBProperty("artist")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Artist { get; set; }
     
-    [BsonElement("year")]
+    [DynamoDBProperty("year")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? Year { get; set; }
     
-    [BsonElement("length")]
+    [DynamoDBProperty("length")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? Length { get; set; }
     
-    [BsonIgnoreIfNull]
-    [BsonElement("genre")]
+    [DynamoDBProperty("genre")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Genre { get; set; }
     
-    [BsonElement("nr")]
+    [DynamoDBProperty("nr")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? Nr { get; set; }
     
-    [BsonElement("albumTitle")]
+    [DynamoDBProperty("albumTitle")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? AlbumTitle { get; set; }
     
-    [BsonElement("albumId")]
-    [BsonRepresentation(BsonType.ObjectId)]
+    [DynamoDBProperty("albumId")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? AlbumId { get; set; }
 }

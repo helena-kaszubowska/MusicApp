@@ -1,7 +1,16 @@
-using EasyNetQ;
+using Amazon.SQS;
+using Amazon.SQS.Model;
 using MusicAppAnalytics.Services;
+using MusicAppAPI.Models;
+using Newtonsoft.Json;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+// Load configuration from AWS Parameter Store
+if (!builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddSystemsManager("/music-app/analytics", TimeSpan.FromMinutes(5));
+}
 
 // Add services to the container.
 
@@ -23,6 +32,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddSingleton<AlbumAnalyticsService>();
+builder.Services.AddSingleton<TrackAnalyticsService>();
 builder.Services.AddLogging(config =>
 {
     config.ClearProviders();
@@ -33,10 +43,18 @@ builder.Services.AddLogging(config =>
         config.AddConsole();
 });
 
-// Register EasyNetQ IBus
-var rabbitMQHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "rabbitmq";
-var connectionString = $"host={rabbitMQHost};port=5672;username=guest;password=guest";
-builder.Services.AddSingleton(RabbitHutch.CreateBus(connectionString));
+// AWS SQS Configuration
+var sqsConfig = new AmazonSQSConfig();
+var serviceUrl = builder.Configuration["SQS:ServiceURL"];
+if (!string.IsNullOrEmpty(serviceUrl))
+{
+    sqsConfig.ServiceURL = serviceUrl;
+}
+var sqsClient = new AmazonSQSClient(sqsConfig);
+builder.Services.AddSingleton<IAmazonSQS>(sqsClient);
+
+// Background service to poll SQS
+builder.Services.AddHostedService<SqsBackgroundService>();
 
 WebApplication app = builder.Build();
 

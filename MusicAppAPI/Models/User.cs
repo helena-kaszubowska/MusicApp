@@ -1,41 +1,36 @@
 ﻿using System.Text.Json.Serialization;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
+using Amazon.DynamoDBv2.DataModel;
 
 namespace MusicAppAPI.Models;
 
+[DynamoDBTable("Users")]
 public class User
 {
-    [BsonRepresentation(BsonType.ObjectId)]
+    [DynamoDBHashKey("id")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Id { get; set; }
     
-    [BsonElement("email")]
+    [DynamoDBProperty("email")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Email { get; set; }
     
-    [BsonElement("password")]
+    [DynamoDBProperty("password")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Password { get; set; }
     
-    [BsonIgnoreIfNull]
-    [BsonElement("roles")]
+    [DynamoDBProperty("roles")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? Roles { get; set; }
-
-    // This property is only used to communicate with MongoDB
-    [BsonElement("library_tracks")]
-    [BsonRepresentation(BsonType.ObjectId)]
-    [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
-    public List<string> LibraryTracks { get; set; } = [];
-
-    // This property is only used to communicate with MongoDB
-    [BsonElement("library_albums")]
-    [BsonRepresentation(BsonType.ObjectId)]
-    [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
-    public List<string> LibraryAlbums { get; set; } = [];
     
-    [BsonIgnore] // This property should never be written to the database
+    [DynamoDBIgnore]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Token { get; set; }
+    
+    [DynamoDBProperty("libraryTracks")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? LibraryTracks { get; set; }
+    
+    [DynamoDBProperty("libraryAlbums")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? LibraryAlbums { get; set; }
 }

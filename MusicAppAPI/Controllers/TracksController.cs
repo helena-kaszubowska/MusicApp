@@ -1,9 +1,10 @@
-using EasyNetQ;
+using Amazon.DynamoDBv2.DataModel;
+using Amazon.SimpleNotificationService;
+using Amazon.SimpleNotificationService.Model;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Bson;
-using MongoDB.Driver;
 using MusicAppAPI.Models;
+using Newtonsoft.Json;
 
 namespace MusicAppAPI.Controllers;
 
@@ -11,13 +12,15 @@ namespace MusicAppAPI.Controllers;
 [Route("api/[controller]")]
 public class TracksController : ControllerBase
 {
-    private readonly IMongoDatabase _database;
-    private readonly IBus _rabbitMQBus;
+    private readonly IDynamoDBContext _context;
+    private readonly IAmazonSimpleNotificationService _snsClient;
+    private readonly IConfiguration _configuration;
 
-    public TracksController(IMongoDatabase database, IBus rabbitMQBus)
+    public TracksController(IDynamoDBContext context, IAmazonSimpleNotificationService snsClient, IConfiguration configuration)
     {
-        _database = database;
-        _rabbitMQBus = rabbitMQBus;
+        _context = context;
+        _snsClient = snsClient;
+        _configuration = configuration;
     }
 
     [HttpGet("search")]
@@ -25,14 +28,16 @@ public class TracksController : ControllerBase
     {
         try
         {
-            IMongoCollection<Track>? tracksCollection = _database.GetCollection<Track>("tracks");
-            // Search by titles and artists
-            string escapedQuery = System.Text.RegularExpressions.Regex.Escape(query);
-            FilterDefinition<Track>? filter = Builders<Track>.Filter.Or(
-                Builders<Track>.Filter.Regex("title", new BsonRegularExpression($"^{escapedQuery}", "i")),
-                Builders<Track>.Filter.Regex("artist", new BsonRegularExpression($"^{escapedQuery}", "i")));
+            // Scan all tracks and filter in memory (similar to AlbumsController)
+            var conditions = new List<ScanCondition>();
+            var allTracks = await _context.ScanAsync<Track>(conditions).GetRemainingAsync();
+            
+            var filteredTracks = allTracks.Where(t => 
+                (t.Title != null && t.Title.Contains(query, StringComparison.OrdinalIgnoreCase)) || 
+                (t.Artist != null && t.Artist.Contains(query, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
 
-            return await tracksCollection.Find(filter).ToListAsync();
+            return Ok(filteredTracks);
         }
         catch (Exception ex)
         {
@@ -46,12 +51,8 @@ public class TracksController : ControllerBase
     {
         try
         {
-            IMongoCollection<Track>? tracksCollection = _database.GetCollection<Track>("tracks");
-            // An empty filter to find all documents in the collection
-            FilterDefinition<Track>? filter = Builders<Track>.Filter.Empty;
-
-            List<Track>? tracks = await tracksCollection.Find(filter).ToListAsync();
-
+            var conditions = new List<ScanCondition>();
+            var tracks = await _context.ScanAsync<Track>(conditions).GetRemainingAsync();
             return Ok(tracks);
         }
         catch (Exception ex)
@@ -103,8 +104,7 @@ public class TracksController : ControllerBase
             if (artist != null && title != null)
                 fileName = $"{artist} - {title}.flac";
             
-            // Send a message to RabbitMQ to track downloads
-            // (do not await for it to finish in case RabbitMQ is not available)
+            // Send a message to SNS to track downloads
             Task.Run(async () =>
             {
                 try
@@ -119,7 +119,17 @@ public class TracksController : ControllerBase
                             $"{Request.HttpContext.Connection.RemoteIpAddress}:{Request.HttpContext.Connection.RemotePort}"
                     };
 
-                    await _rabbitMQBus.PubSub.PublishAsync(message);
+                    var topicArn = _configuration["SNS:TopicArn"] ?? "arn:aws:sns:us-east-1:000000000000:music-app-topic";
+                    var publishRequest = new PublishRequest
+                    {
+                        TopicArn = topicArn,
+                        Message = JsonConvert.SerializeObject(message),
+                        MessageAttributes = new Dictionary<string, MessageAttributeValue>
+                        {
+                            { "MessageType", new MessageAttributeValue { DataType = "String", StringValue = "TrackDownloaded" } }
+                        }
+                    };
+                    await _snsClient.PublishAsync(publishRequest);
                 }
                 catch (Exception ex)
                 {
@@ -127,7 +137,6 @@ public class TracksController : ControllerBase
                 }
             });
             
-            // Return the response even if RabbitMQ is down
             FileStream stream = new(filePath, FileMode.Open, FileAccess.Read);
             return File(stream, "audio/flac", fileName);
         }

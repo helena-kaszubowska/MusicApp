@@ -1,10 +1,11 @@
-using EasyNetQ;
+using Amazon.DynamoDBv2.DataModel;
+using Amazon.DynamoDBv2.DocumentModel;
+using Amazon.SimpleNotificationService;
+using Amazon.SimpleNotificationService.Model;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
-using MongoDB.Driver;
 using MusicAppAPI.Models;
+using Newtonsoft.Json;
 
 namespace MusicAppAPI.Controllers;
 
@@ -12,13 +13,15 @@ namespace MusicAppAPI.Controllers;
 [Route("api/[controller]")]
 public class AlbumsController : ControllerBase
 {
-    private readonly IMongoDatabase _database;
-    private readonly IBus _rabbitMQBus;
+    private readonly IDynamoDBContext _context;
+    private readonly IAmazonSimpleNotificationService _snsClient;
+    private readonly IConfiguration _configuration;
 
-    public AlbumsController(IMongoDatabase database, IBus rabbitMQBus)
+    public AlbumsController(IDynamoDBContext context, IAmazonSimpleNotificationService snsClient, IConfiguration configuration)
     {
-        _database = database;
-        _rabbitMQBus = rabbitMQBus;
+        _context = context;
+        _snsClient = snsClient;
+        _configuration = configuration;
     }
 
     [Authorize(Roles = "admin")]
@@ -41,10 +44,11 @@ public class AlbumsController : ControllerBase
                     album.Tracks[i].Nr = i + 1;
 
             // Generate an id if it's not provided
-            album.Id ??= ObjectId.GenerateNewId().ToString();
+            album.Id ??= Guid.NewGuid().ToString();
 
             foreach (Track track in album.Tracks)
             {
+                track.Id ??= Guid.NewGuid().ToString();
                 track.Artist ??= album.Artist;
                 track.AlbumTitle = album.Title;
                 track.AlbumId = album.Id;
@@ -52,15 +56,15 @@ public class AlbumsController : ControllerBase
             }
 
             // Store tracks in a separate collection
-            IMongoCollection<Track>? tracksCollection = _database.GetCollection<Track>("tracks");
-            await tracksCollection.InsertManyAsync(album.Tracks);
+            var trackBatch = _context.CreateBatchWrite<Track>();
+            trackBatch.AddPutItems(album.Tracks);
+            await trackBatch.ExecuteAsync();
 
             // Only track ids are stored with the album in the database
             album.TrackIds = album.Tracks.Select(t => t.Id!).ToList();
             album.Tracks = null;
 
-            IMongoCollection<Album>? albumsCollection = _database.GetCollection<Album>("albums");
-            await albumsCollection.InsertOneAsync(album);
+            await _context.SaveAsync(album);
             return Created($"api/albums/{album.Id}", null);
         }
         catch (Exception ex)
@@ -75,12 +79,10 @@ public class AlbumsController : ControllerBase
     {
         try
         {
-            IMongoCollection<Album>? albumsCollection = _database.GetCollection<Album>("albums");
-            FilterDefinition<Album>? filter = Builders<Album>.Filter.Empty;
-
             // When requesting all the albums, tracks are usually not needed and create too much boilerplate
-            ProjectionDefinition<Album>? projection = Builders<Album>.Projection.Exclude("tracks");
-            return Ok(await albumsCollection.Find(filter).Project<Album>(projection).ToListAsync());
+            var conditions = new List<ScanCondition>();
+            var albums = await _context.ScanAsync<Album>(conditions).GetRemainingAsync();
+            return Ok(albums);
         }
         catch (Exception ex)
         {
@@ -102,9 +104,7 @@ public class AlbumsController : ControllerBase
                 return StatusCode(StatusCodes.Status400BadRequest, "Album must have at least one track.");
             
             // Fetch existing album to get trackIds
-            IMongoCollection<Album> albumsCollection = _database.GetCollection<Album>("albums");
-            FilterDefinition<Album> filter = Builders<Album>.Filter.Eq(a => a.Id, id);
-            Album? album = await albumsCollection.Find(filter).FirstOrDefaultAsync();
+            Album? album = await _context.LoadAsync<Album>(id);
             if (album == null) return StatusCode(StatusCodes.Status404NotFound);
 
             // Validate tracks
@@ -121,46 +121,43 @@ public class AlbumsController : ControllerBase
                 track.Year ??= album.Year;
             }
 
-            IMongoCollection<Track> tracksCollection = _database.GetCollection<Track>("tracks");
-
             // Compare tracks to identify removals
-            List<string> existingTrackIds = album.TrackIds!;
+            List<string> existingTrackIds = album.TrackIds ?? new List<string>();
             List<string> updatedTrackIds = albumUpdate.Tracks.Where(t => t.Id != null).Select(t => t.Id!).ToList();
             List<string> tracksToRemove = existingTrackIds.Except(updatedTrackIds).ToList();
 
-            // Use bulk write for tracks for better performance
-            List<WriteModel<Track>> bulkTrackOperations = [];
+            var trackBatch = _context.CreateBatchWrite<Track>();
 
             // New tracks (id is null)
             List<Track> newTracks = albumUpdate.Tracks.Where(t => t.Id is null).ToList();
             foreach (Track newTrack in newTracks)
-                bulkTrackOperations.Add(new InsertOneModel<Track>(newTrack));
+            {
+                newTrack.Id = Guid.NewGuid().ToString();
+                trackBatch.AddPutItem(newTrack);
+            }
 
             // Existing tracks (id is non-null)
             List<Track> existingTracks = albumUpdate.Tracks.Where(t => t.Id != null).ToList();
             foreach (Track track in existingTracks)
-                bulkTrackOperations.Add(new ReplaceOneModel<Track>(
-                    Builders<Track>.Filter.Eq(t => t.Id, track.Id), track));
+                trackBatch.AddPutItem(track);
 
             // Tracks to remove
-            if (tracksToRemove.Count != 0)
-                bulkTrackOperations.Add(new DeleteManyModel<Track>(
-                    Builders<Track>.Filter.In(t => t.Id, tracksToRemove)));
             foreach (string trackId in tracksToRemove)
             {
+                trackBatch.AddDeleteItem(new Track { Id = trackId });
                 string filePath = Path.Combine(Directory.GetCurrentDirectory(), "assets/audio", trackId + ".flac");
                 if (System.IO.File.Exists(filePath))
                     System.IO.File.Delete(filePath);
             }
 
-            if (bulkTrackOperations.Count != 0)
-                await tracksCollection.BulkWriteAsync(bulkTrackOperations);
+            await trackBatch.ExecuteAsync();
             
             // Only track ids are stored with the album in the database
+            albumUpdate.Id = id;
             albumUpdate.TrackIds = albumUpdate.Tracks.Select(t => t.Id!).ToList();
             albumUpdate.Tracks = null;
             
-            await albumsCollection.ReplaceOneAsync(filter, albumUpdate);
+            await _context.SaveAsync(albumUpdate);
 
             return StatusCode(StatusCodes.Status200OK);
         }
@@ -177,19 +174,24 @@ public class AlbumsController : ControllerBase
     {
         try
         {
-            IMongoCollection<Album>? albumsCollection = _database.GetCollection<Album>("albums");
-            FilterDefinition<Album>? filter = Builders<Album>.Filter.Eq(a => a.Id, id);
+            Album? album = await _context.LoadAsync<Album>(id);
+            if (album == null) return StatusCode(StatusCodes.Status404NotFound);
 
-            Album? album = await albumsCollection.Find(filter).FirstOrDefaultAsync();
-            DeleteResult result = await albumsCollection.DeleteOneAsync(filter);
-            if (result.DeletedCount == 0) return StatusCode(StatusCodes.Status404NotFound);
+            await _context.DeleteAsync(album);
 
             // Remove all tracks of the album as well
-            IMongoCollection<Track>? tracksCollection = _database.GetCollection<Track>("tracks");
-            await tracksCollection.DeleteManyAsync(Builders<Track>.Filter.Eq(t => t.AlbumId, id));
-            
-            foreach (string trackId in album!.TrackIds!)
-                System.IO.File.Delete(Path.Combine(Directory.GetCurrentDirectory(), "assets/audio", trackId + ".flac"));
+            if (album.TrackIds != null && album.TrackIds.Count > 0)
+            {
+                var trackBatch = _context.CreateBatchWrite<Track>();
+                foreach (string trackId in album.TrackIds)
+                {
+                    trackBatch.AddDeleteItem(new Track { Id = trackId });
+                    string filePath = Path.Combine(Directory.GetCurrentDirectory(), "assets/audio", trackId + ".flac");
+                    if (System.IO.File.Exists(filePath))
+                        System.IO.File.Delete(filePath);
+                }
+                await trackBatch.ExecuteAsync();
+            }
 
             return StatusCode(StatusCodes.Status200OK);
         }
@@ -205,14 +207,25 @@ public class AlbumsController : ControllerBase
     {
         try
         {
-            IMongoCollection<Album>? albumsCollection = _database.GetCollection<Album>("albums");
-            FilterDefinition<Album>? filter = Builders<Album>.Filter.Eq(t => t.Id, id);
-
-            // When a single album is requested, it's better to return tracks details as well, not just ids
-            var album = BsonSerializer.Deserialize<Album?>(await albumsCollection.Aggregate().Match(filter)
-                .Lookup("tracks", "tracks", "_id", "realTracks").FirstOrDefaultAsync());
+            Album? album = await _context.LoadAsync<Album>(id);
 
             if (album is null) return StatusCode(StatusCodes.Status404NotFound);
+
+            // Fetch tracks
+            if (album.TrackIds != null && album.TrackIds.Count > 0)
+            {
+                var trackBatch = _context.CreateBatchGet<Track>();
+                foreach (var trackId in album.TrackIds)
+                {
+                    trackBatch.AddKey(trackId);
+                }
+                await trackBatch.ExecuteAsync();
+                album.Tracks = trackBatch.Results;
+            }
+            else
+            {
+                album.Tracks = new List<Track>();
+            }
 
             // These fields are useless in the context of an album
             foreach (Track track in album.Tracks!)
@@ -221,8 +234,7 @@ public class AlbumsController : ControllerBase
                 track.AlbumId = null;
             }
 
-            // Send a message to RabbitMQ to track album views
-            // (do not await for it to finish in case RabbitMQ is not available)
+            // Send a message to SNS to track album views
             Task.Run(async () =>
             {
                 try
@@ -237,7 +249,17 @@ public class AlbumsController : ControllerBase
                             $"{Request.HttpContext.Connection.RemoteIpAddress}:{Request.HttpContext.Connection.RemotePort}"
                     };
 
-                    await _rabbitMQBus.PubSub.PublishAsync(message);
+                    var topicArn = _configuration["SNS:TopicArn"] ?? "arn:aws:sns:us-east-1:000000000000:music-app-topic";
+                    var publishRequest = new PublishRequest
+                    {
+                        TopicArn = topicArn,
+                        Message = JsonConvert.SerializeObject(message),
+                        MessageAttributes = new Dictionary<string, MessageAttributeValue>
+                        {
+                            { "MessageType", new MessageAttributeValue { DataType = "String", StringValue = "AlbumViewed" } }
+                        }
+                    };
+                    await _snsClient.PublishAsync(publishRequest);
                 }
                 catch (Exception ex)
                 {
@@ -245,7 +267,6 @@ public class AlbumsController : ControllerBase
                 }
             });
             
-            // Return the response even if RabbitMQ is down
             return Ok(album);
         }
         catch (Exception ex)
@@ -260,16 +281,14 @@ public class AlbumsController : ControllerBase
     {
         try
         {
-            IMongoCollection<Album>? albumsCollection = _database.GetCollection<Album>("albums");
-            // Search by titles and artists
-            string escapedQuery = System.Text.RegularExpressions.Regex.Escape(query);
-            FilterDefinition<Album>? filter = Builders<Album>.Filter.Or(
-                Builders<Album>.Filter.Regex("title", new BsonRegularExpression($"^{escapedQuery}", "i")),
-                Builders<Album>.Filter.Regex("artist", new BsonRegularExpression($"^{escapedQuery}", "i")));
+            var allAlbums = await _context.ScanAsync<Album>(new List<ScanCondition>()).GetRemainingAsync();
+            
+            var filteredAlbums = allAlbums.Where(a => 
+                (a.Title != null && a.Title.Contains(query, StringComparison.OrdinalIgnoreCase)) || 
+                (a.Artist != null && a.Artist.Contains(query, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
 
-            // Multiple albums might be returned, and tracks could create too much boilerplate
-            ProjectionDefinition<Album>? projection = Builders<Album>.Projection.Exclude("tracks");
-            return Ok(await albumsCollection.Find(filter).Project<Album>(projection).ToListAsync());
+            return Ok(filteredAlbums);
         }
         catch (Exception ex)
         {
