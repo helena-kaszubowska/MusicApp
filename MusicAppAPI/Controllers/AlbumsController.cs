@@ -16,12 +16,14 @@ public class AlbumsController : ControllerBase
     private readonly IDynamoDBContext _context;
     private readonly IAmazonSimpleNotificationService _snsClient;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<AlbumsController> _logger;
 
-    public AlbumsController(IDynamoDBContext context, IAmazonSimpleNotificationService snsClient, IConfiguration configuration)
+    public AlbumsController(IDynamoDBContext context, IAmazonSimpleNotificationService snsClient, IConfiguration configuration, ILogger<AlbumsController> logger)
     {
         _context = context;
         _snsClient = snsClient;
         _configuration = configuration;
+        _logger = logger;
     }
 
     [Authorize(Roles = "admin")]
@@ -65,11 +67,12 @@ public class AlbumsController : ControllerBase
             album.Tracks = null;
 
             await _context.SaveAsync(album);
+            _logger.LogInformation("Created new album: {AlbumTitle} by {Artist}", album.Title, album.Artist);
             return Created($"api/albums/{album.Id}", null);
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error creating album");
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }
@@ -86,7 +89,7 @@ public class AlbumsController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error fetching all albums");
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }
@@ -158,12 +161,13 @@ public class AlbumsController : ControllerBase
             albumUpdate.Tracks = null;
             
             await _context.SaveAsync(albumUpdate);
+            _logger.LogInformation("Updated album: {AlbumId}", id);
 
             return StatusCode(StatusCodes.Status200OK);
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error updating album {AlbumId}", id);
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }
@@ -192,12 +196,13 @@ public class AlbumsController : ControllerBase
                 }
                 await trackBatch.ExecuteAsync();
             }
-
+            
+            _logger.LogInformation("Deleted album: {AlbumId}", id);
             return StatusCode(StatusCodes.Status200OK);
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error deleting album {AlbumId}", id);
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }
@@ -263,7 +268,7 @@ public class AlbumsController : ControllerBase
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex);
+                    _logger.LogError(ex, "Error sending SNS message for album view");
                 }
             });
             
@@ -271,7 +276,7 @@ public class AlbumsController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error fetching album {AlbumId}", id);
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }
@@ -292,7 +297,7 @@ public class AlbumsController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error searching albums with query {Query}", query);
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }

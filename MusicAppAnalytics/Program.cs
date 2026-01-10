@@ -6,6 +6,10 @@ using Newtonsoft.Json;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+// AWS Logging
+builder.Logging.AddAWSProvider(builder.Configuration.GetAWSLoggingConfigSection());
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
+
 // Load configuration from AWS Parameter Store
 if (!builder.Environment.IsDevelopment())
 {

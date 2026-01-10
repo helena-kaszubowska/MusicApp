@@ -15,12 +15,14 @@ public class TracksController : ControllerBase
     private readonly IDynamoDBContext _context;
     private readonly IAmazonSimpleNotificationService _snsClient;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<TracksController> _logger;
 
-    public TracksController(IDynamoDBContext context, IAmazonSimpleNotificationService snsClient, IConfiguration configuration)
+    public TracksController(IDynamoDBContext context, IAmazonSimpleNotificationService snsClient, IConfiguration configuration, ILogger<TracksController> logger)
     {
         _context = context;
         _snsClient = snsClient;
         _configuration = configuration;
+        _logger = logger;
     }
 
     [HttpGet("search")]
@@ -41,7 +43,7 @@ public class TracksController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error searching tracks with query {Query}", query);
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }
@@ -57,7 +59,7 @@ public class TracksController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error fetching all tracks");
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }
@@ -81,12 +83,13 @@ public class TracksController : ControllerBase
             {
                 await file.CopyToAsync(fs);
             }
-
+            
+            _logger.LogInformation("Uploaded track file: {FileName}", fileName);
             return StatusCode(StatusCodes.Status201Created);
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error uploading file for track {TrackId}", id);
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }
@@ -133,7 +136,7 @@ public class TracksController : ControllerBase
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex);
+                    _logger.LogError(ex, "Error sending SNS message for track download");
                 }
             });
             
@@ -142,7 +145,7 @@ public class TracksController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error downloading track {TrackId}", id);
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }

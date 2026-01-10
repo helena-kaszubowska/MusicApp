@@ -11,18 +11,21 @@ public class SqsBackgroundService : BackgroundService
     private readonly AlbumAnalyticsService _albumAnalyticsService;
     private readonly TrackAnalyticsService _trackAnalyticsService;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<SqsBackgroundService> _logger;
 
-    public SqsBackgroundService(IAmazonSQS sqsClient, AlbumAnalyticsService albumAnalyticsService, TrackAnalyticsService trackAnalyticsService, IConfiguration configuration)
+    public SqsBackgroundService(IAmazonSQS sqsClient, AlbumAnalyticsService albumAnalyticsService, TrackAnalyticsService trackAnalyticsService, IConfiguration configuration, ILogger<SqsBackgroundService> logger)
     {
         _sqsClient = sqsClient;
         _albumAnalyticsService = albumAnalyticsService;
         _trackAnalyticsService = trackAnalyticsService;
         _configuration = configuration;
+        _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var queueUrl = _configuration["SQS:QueueUrl"] ?? "http://localhost:4566/000000000000/music-app-queue";
+        _logger.LogInformation("Starting SQS polling on queue: {QueueUrl}", queueUrl);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -38,6 +41,11 @@ public class SqsBackgroundService : BackgroundService
 
                 var response = await _sqsClient.ReceiveMessageAsync(request, stoppingToken);
 
+                if (response.Messages.Count > 0)
+                {
+                    _logger.LogDebug("Received {Count} messages from SQS", response.Messages.Count);
+                }
+
                 foreach (var message in response.Messages)
                 {
                     await ProcessMessageAsync(message);
@@ -46,7 +54,7 @@ public class SqsBackgroundService : BackgroundService
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error processing SQS message: {ex.Message}");
+                _logger.LogError(ex, "Error processing SQS message");
                 await Task.Delay(5000, stoppingToken);
             }
         }
@@ -54,40 +62,53 @@ public class SqsBackgroundService : BackgroundService
 
     private async Task ProcessMessageAsync(Message message)
     {
-        // SNS messages are wrapped in a JSON object with a "Message" property containing the actual payload
-        // and "MessageAttributes" if sent via SNS.
-        // However, if we consume directly from SQS (without SNS subscription), the format might differ.
-        // Assuming SNS -> SQS subscription:
-        
-        var snsMessage = JsonConvert.DeserializeObject<dynamic>(message.Body);
-        string payload = snsMessage?.Message;
-        string messageType = snsMessage?.MessageAttributes?.MessageType?.Value;
-
-        if (string.IsNullOrEmpty(payload))
+        try 
         {
-            // Fallback: maybe it's a direct SQS message
-            payload = message.Body;
-            if (message.MessageAttributes.TryGetValue("MessageType", out var attr))
+            // SNS messages are wrapped in a JSON object with a "Message" property containing the actual payload
+            // and "MessageAttributes" if sent via SNS.
+            // However, if we consume directly from SQS (without SNS subscription), the format might differ.
+            // Assuming SNS -> SQS subscription:
+            
+            var snsMessage = JsonConvert.DeserializeObject<dynamic>(message.Body);
+            string payload = snsMessage?.Message;
+            string messageType = snsMessage?.MessageAttributes?.MessageType?.Value;
+
+            if (string.IsNullOrEmpty(payload))
             {
-                messageType = attr.StringValue;
+                // Fallback: maybe it's a direct SQS message
+                payload = message.Body;
+                if (message.MessageAttributes.TryGetValue("MessageType", out var attr))
+                {
+                    messageType = attr.StringValue;
+                }
+            }
+
+            if (messageType == "AlbumViewed")
+            {
+                var albumViewedMessage = JsonConvert.DeserializeObject<AlbumViewedMessage>(payload);
+                if (albumViewedMessage != null)
+                {
+                    _albumAnalyticsService.RecordView(albumViewedMessage);
+                    _logger.LogInformation("Processed AlbumViewed message for album: {AlbumId}", albumViewedMessage.AlbumId);
+                }
+            }
+            else if (messageType == "TrackDownloaded")
+            {
+                var trackDownloadedMessage = JsonConvert.DeserializeObject<TrackDownloadedMessage>(payload);
+                if (trackDownloadedMessage != null)
+                {
+                    _trackAnalyticsService.RecordDownload(trackDownloadedMessage);
+                    _logger.LogInformation("Processed TrackDownloaded message for track: {TrackId}", trackDownloadedMessage.TrackId);
+                }
+            }
+            else 
+            {
+                _logger.LogWarning("Unknown message type: {MessageType}", messageType);
             }
         }
-
-        if (messageType == "AlbumViewed")
+        catch (Exception ex)
         {
-            var albumViewedMessage = JsonConvert.DeserializeObject<AlbumViewedMessage>(payload);
-            if (albumViewedMessage != null)
-            {
-                _albumAnalyticsService.RecordView(albumViewedMessage);
-            }
-        }
-        else if (messageType == "TrackDownloaded")
-        {
-            var trackDownloadedMessage = JsonConvert.DeserializeObject<TrackDownloadedMessage>(payload);
-            if (trackDownloadedMessage != null)
-            {
-                _trackAnalyticsService.RecordDownload(trackDownloadedMessage);
-            }
+            _logger.LogError(ex, "Error deserializing or processing message body");
         }
     }
 }

@@ -12,10 +12,12 @@ namespace MusicAppAPI.Controllers;
 public class LibraryController : ControllerBase
 {
     private readonly IDynamoDBContext _context;
+    private readonly ILogger<LibraryController> _logger;
 
-    public LibraryController(IDynamoDBContext context)
+    public LibraryController(IDynamoDBContext context, ILogger<LibraryController> logger)
     {
         _context = context;
+        _logger = logger;
     }
     
     public class AlbumIdRequest
@@ -55,7 +57,7 @@ public class LibraryController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error fetching library tracks");
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }
@@ -81,11 +83,12 @@ public class LibraryController : ControllerBase
                 await _context.SaveAsync(user);
             }
             
+            _logger.LogInformation("Added track {TrackId} to user {UserId} library", trackId, userId);
             return StatusCode(StatusCodes.Status200OK);
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error adding track {TrackId} to library", trackId);
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }
@@ -108,6 +111,7 @@ public class LibraryController : ControllerBase
             {
                 user.LibraryTracks.Remove(trackId);
                 await _context.SaveAsync(user);
+                _logger.LogInformation("Removed track {TrackId} from user {UserId} library", trackId, userId);
                 return StatusCode(StatusCodes.Status200OK);
             }
             
@@ -115,7 +119,7 @@ public class LibraryController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error removing track {TrackId} from library", trackId);
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }
@@ -147,7 +151,7 @@ public class LibraryController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error fetching library albums");
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }
@@ -173,11 +177,12 @@ public class LibraryController : ControllerBase
                 await _context.SaveAsync(user);
             }
             
+            _logger.LogInformation("Added album {AlbumId} to user {UserId} library", albumId, userId);
             return StatusCode(StatusCodes.Status200OK);
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error adding album {AlbumId} to library", albumId);
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }
@@ -200,6 +205,7 @@ public class LibraryController : ControllerBase
             {
                 user.LibraryAlbums.Remove(albumId);
                 await _context.SaveAsync(user);
+                _logger.LogInformation("Removed album {AlbumId} from user {UserId} library", albumId, userId);
                 return StatusCode(StatusCodes.Status200OK);
             }
             
@@ -207,7 +213,7 @@ public class LibraryController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error removing album {AlbumId} from library", albumId);
             return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
         }
     }

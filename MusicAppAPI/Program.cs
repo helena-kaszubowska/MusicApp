@@ -9,6 +9,10 @@ using MusicAppAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// AWS Logging
+builder.Logging.AddAWSProvider(builder.Configuration.GetAWSLoggingConfigSection());
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
+
 // Load configuration from AWS Parameter Store
 // In production, you would typically use the default credentials chain.
 // For local development with LocalStack, you might need custom configuration or just rely on appsettings.
