@@ -70,8 +70,8 @@ public class SqsBackgroundService : BackgroundService
             // Assuming SNS -> SQS subscription:
             
             var snsMessage = JsonConvert.DeserializeObject<dynamic>(message.Body);
-            string payload = snsMessage?.Message;
-            string messageType = snsMessage?.MessageAttributes?.MessageType?.Value;
+            string payload = snsMessage?.Message ?? "";
+            string messageType = snsMessage?.MessageAttributes?.MessageType?.Value ?? "";
 
             if (string.IsNullOrEmpty(payload))
             {

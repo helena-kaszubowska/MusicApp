@@ -19,10 +19,6 @@ COPY --from=build /app/out .
 # Set environment variables for ASP.NET and RabbitMQ
 ENV ASPNETCORE_URLS="http://+:80"
 ENV ASPNETCORE_ENVIRONMENT="Development"
-ENV RabbitMQ__Host="rabbitmq"
-ENV RabbitMQ__Port="5672"
-ENV RabbitMQ__Username="guest"
-ENV RabbitMQ__Password="guest"
 
 # Turn off HTTPS redirection and certificates
 ENV DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION=1

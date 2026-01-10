@@ -1,16 +1,19 @@
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using AWS.Logger;
 using MusicAppAnalytics.Services;
 using MusicAppAPI.Models;
 using Newtonsoft.Json;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Add AWS Lambda Hosting
-builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
-
-// AWS Logging
-builder.Logging.AddAWSProvider(builder.Configuration.GetAWSLoggingConfigSection());
+// AWS Logging (Configured in code, no appsettings dependency)
+var awsLoggingConfig = new AWSLoggerConfig
+{
+    LogGroup = "MusicAppAnalytics",
+    Region = "eu-north-1" // Replace with your actual region if different
+};
+builder.Logging.AddAWSProvider(awsLoggingConfig);
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
 // Load configuration from AWS Parameter Store
@@ -43,7 +46,8 @@ builder.Services.AddSingleton<TrackAnalyticsService>();
 builder.Services.AddLogging(config =>
 {
     config.ClearProviders();
-    config.AddConfiguration(builder.Configuration.GetSection("Logging"));
+    // Re-add AWS Provider to ensure it's in the final provider list if cleared
+    config.AddAWSProvider(awsLoggingConfig);
     config.AddDebug();
     config.AddEventSourceLogger();
     if (builder.Environment.IsDevelopment())
