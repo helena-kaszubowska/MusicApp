@@ -6,6 +6,9 @@ using Newtonsoft.Json;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+// Add AWS Lambda Hosting
+builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
+
 // AWS Logging
 builder.Logging.AddAWSProvider(builder.Configuration.GetAWSLoggingConfigSection());
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
