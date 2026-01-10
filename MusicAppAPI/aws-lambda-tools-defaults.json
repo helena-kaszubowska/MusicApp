@@ -1,0 +1,7 @@
+{
+  "function-name": "proj-api-lambda",
+  "function-runtime": "dotnet8",
+  "function-handler": "MusicAppAPI",
+  "function-architecture": "x86_64",
+  "region": "eu-north-1"
+}
