@@ -9,16 +9,21 @@ public class DynamoDBStringListConverter : IPropertyConverter
     public DynamoDBEntry ToEntry(object value)
     {
         if (value is not IEnumerable<string> list) return new DynamoDBNull();
-        return new DynamoDBList(list.Select(x => new Primitive(x)));
+        
+        // OPTION A: Write as Native List (Recommended for long term)
+        // return new DynamoDBList(list.Select(x => new Primitive(x)));
+
+        // OPTION B: Write as JSON String (Matches your current DMS migration output)
+        return new Primitive(JsonConvert.SerializeObject(list));
     }
 
     public object FromEntry(DynamoDBEntry entry)
     {
-        Console.WriteLine($"[Converter] Converting entry of type: {entry?.GetType().Name}");
+        // Console.WriteLine($"[Converter] Converting entry of type: {entry?.GetType().Name}");
 
         if (entry is DynamoDBNull || entry == null) return new List<string>();
 
-        // Case 1: DynamoDB List (L)
+        // Case 1: DynamoDB List (L) - If you ever switch to native lists
         if (entry is DynamoDBList list)
         {
             return list.Entries.OfType<Primitive>().Select(p => p.AsString()).ToList();
@@ -27,31 +32,27 @@ public class DynamoDBStringListConverter : IPropertyConverter
         // Case 2: Primitive (S or SS)
         if (entry is Primitive primitive)
         {
-            // If it's a String Set (SS), AsListOfString works perfectly
             if (primitive.Type != DynamoDBEntryType.String)
             {
                 return primitive.AsListOfString();
             }
 
-            // If it's a single String (S)
             string value = primitive.AsString();
             
-            // CHECK: Is it a JSON array string? e.g. "[\"id1\", \"id2\"]"
+            // Check for JSON array
             if (value.Trim().StartsWith("[") && value.Trim().EndsWith("]"))
             {
                 try 
                 {
-                    Console.WriteLine("[Converter] Detected JSON string array, parsing...");
                     var parsedList = JsonConvert.DeserializeObject<List<string>>(value);
                     return parsedList ?? new List<string>();
                 }
                 catch
                 {
-                    Console.WriteLine("[Converter] Failed to parse JSON, treating as single string");
+                    // Ignore parse error
                 }
             }
 
-            // Otherwise, it's just a single ID
             return new List<string> { value };
         }
         
