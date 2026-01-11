@@ -3,7 +3,7 @@ using Amazon.DynamoDBv2.DataModel;
 
 namespace MusicAppAPI.Models;
 
-[DynamoDBTable("Tracks")]
+[DynamoDBTable("tracks")]
 public class Track
 {
     [DynamoDBHashKey("id")]
