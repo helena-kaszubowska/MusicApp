@@ -35,7 +35,7 @@ public class Album
     public string? Label { get; set; }
     
     // This property is only used to serialize and deserialize album objects from DynamoDB
-    [DynamoDBProperty("trackIds")]
+    [DynamoDBProperty("trackIds", typeof(DynamoDBStringListConverter))]
     [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
     public List<string>? TrackIds { get; set; }
 }

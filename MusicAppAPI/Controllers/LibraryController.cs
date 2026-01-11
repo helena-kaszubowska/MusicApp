@@ -20,16 +20,6 @@ public class LibraryController : ControllerBase
         _logger = logger;
     }
     
-    public class AlbumIdRequest
-    {
-        public string albumId { get; set; } = "";
-    }
-    
-    public class TrackIdRequest
-    {
-        public string trackId { get; set; } = "";
-    }
-    
     [HttpGet("tracks")]
     public async Task<ActionResult> GetAllTracks()
     {

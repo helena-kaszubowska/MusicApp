@@ -18,7 +18,7 @@ public class User
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Password { get; set; }
     
-    [DynamoDBProperty("roles")]
+    [DynamoDBProperty("roles", typeof(DynamoDBStringListConverter))]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? Roles { get; set; }
     
@@ -26,11 +26,11 @@ public class User
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Token { get; set; }
     
-    [DynamoDBProperty("libraryTracks")]
+    [DynamoDBProperty("libraryTracks", typeof(DynamoDBStringListConverter))]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? LibraryTracks { get; set; }
     
-    [DynamoDBProperty("libraryAlbums")]
+    [DynamoDBProperty("libraryAlbums", typeof(DynamoDBStringListConverter))]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? LibraryAlbums { get; set; }
 }
