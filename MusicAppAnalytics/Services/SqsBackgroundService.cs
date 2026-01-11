@@ -24,7 +24,7 @@ public class SqsBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var queueUrl = _configuration["SQS:QueueUrl"] ?? "http://localhost:4566/000000000000/music-app-queue";
+        var queueUrl = _configuration["SQS:QueueUrl"];
         _logger.LogInformation("Starting SQS polling on queue: {QueueUrl}", queueUrl);
 
         while (!stoppingToken.IsCancellationRequested)

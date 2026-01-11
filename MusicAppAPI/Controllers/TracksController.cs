@@ -107,6 +107,13 @@ public class TracksController : ControllerBase
             if (artist != null && title != null)
                 fileName = $"{artist} - {title}.flac";
             
+            // Capture IP before starting background task
+            string source = "Unknown";
+            if (Request.HttpContext.Connection.RemoteIpAddress != null)
+            {
+                source = $"{Request.HttpContext.Connection.RemoteIpAddress}:{Request.HttpContext.Connection.RemotePort}";
+            }
+
             // Send a message to SNS to track downloads
             Task.Run(async () =>
             {
@@ -118,8 +125,7 @@ public class TracksController : ControllerBase
                         TrackTitle = title,
                         TrackArtist = artist,
                         DownloadedAt = DateTime.UtcNow,
-                        Source =
-                            $"{Request.HttpContext.Connection.RemoteIpAddress}:{Request.HttpContext.Connection.RemotePort}"
+                        Source = source
                     };
 
                     var topicArn = _configuration["SNS:TopicArn"] ?? "arn:aws:sns:us-east-1:000000000000:music-app-topic";

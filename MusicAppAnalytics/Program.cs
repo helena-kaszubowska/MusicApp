@@ -1,9 +1,6 @@
 using Amazon.SQS;
-using Amazon.SQS.Model;
 using AWS.Logger;
 using MusicAppAnalytics.Services;
-using MusicAppAPI.Models;
-using Newtonsoft.Json;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -11,16 +8,18 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 var awsLoggingConfig = new AWSLoggerConfig
 {
     LogGroup = "MusicAppAnalytics",
-    Region = "eu-north-1" // Replace with your actual region if different
+    Region = "eu-north-1"
 };
 builder.Logging.AddAWSProvider(awsLoggingConfig);
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
-// Load configuration from AWS Parameter Store
-if (!builder.Environment.IsDevelopment())
+builder.WebHost.ConfigureKestrel(options =>
 {
-    builder.Configuration.AddSystemsManager("/music-app/analytics", TimeSpan.FromMinutes(5));
-}
+    options.ListenAnyIP(80);
+});
+
+// Load configuration from AWS Parameter Store
+builder.Configuration.AddSystemsManager("/music-app/analytics", TimeSpan.FromMinutes(5));
 
 // Add services to the container.
 
@@ -56,11 +55,6 @@ builder.Services.AddLogging(config =>
 
 // AWS SQS Configuration
 var sqsConfig = new AmazonSQSConfig();
-var serviceUrl = builder.Configuration["SQS:ServiceURL"];
-if (!string.IsNullOrEmpty(serviceUrl))
-{
-    sqsConfig.ServiceURL = serviceUrl;
-}
 var sqsClient = new AmazonSQSClient(sqsConfig);
 builder.Services.AddSingleton<IAmazonSQS>(sqsClient);
 

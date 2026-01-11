@@ -12,10 +12,12 @@ namespace MusicAppAPI.Services;
 public class UserService : IUserService
 {
     private readonly IDynamoDBContext _context;
+    private readonly IConfiguration _configuration;
     
-    public UserService(IDynamoDBContext context)
+    public UserService(IDynamoDBContext context, IConfiguration configuration)
     {
         _context = context;
+        _configuration = configuration;
     }
     
     public async Task<User?> RegisterAsync(string email, string password)
@@ -97,7 +99,7 @@ public class UserService : IUserService
     {
         JwtSecurityTokenHandler handler = new();
         
-        byte[] privateKey = Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT_KEY")!); // See launchSettings.json
+        byte[] privateKey = Encoding.UTF8.GetBytes(_configuration["JWT_KEY"] ?? "");
         SigningCredentials credentials = new(new SymmetricSecurityKey(privateKey), SecurityAlgorithms.HmacSha256Signature);
         
         SecurityTokenDescriptor tokenDescriptor = new()

@@ -2,6 +2,7 @@ using System.Text;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.SimpleNotificationService;
+using AWS.Logger;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -13,7 +14,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
 
 // AWS Logging
-builder.Logging.AddAWSProvider(builder.Configuration.GetAWSLoggingConfigSection());
+var awsLoggingConfig = new AWSLoggerConfig
+{
+    LogGroup = "MusicAppAPI",
+    Region = "eu-north-1", // Replace with your actual region if different
+    LibraryLogFileName = "/tmp/aws-logger-errors.txt" // Use /tmp for Lambda
+};
+builder.Logging.AddAWSProvider(awsLoggingConfig);
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
 // Load configuration from AWS Parameter Store
@@ -38,11 +45,6 @@ builder.Services.AddSingleton<IDynamoDBContext, DynamoDBContext>();
 
 // AWS SNS Configuration
 var snsConfig = new AmazonSimpleNotificationServiceConfig();
-var snsServiceUrl = builder.Configuration["SNS:ServiceURL"];
-if (!string.IsNullOrEmpty(snsServiceUrl))
-{
-    snsConfig.ServiceURL = snsServiceUrl;
-}
 var snsClient = new AmazonSimpleNotificationServiceClient(snsConfig);
 builder.Services.AddSingleton<IAmazonSimpleNotificationService>(snsClient);
 
@@ -123,11 +125,14 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Enable Swagger in all environments (including Production/Lambda) for testing
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("v1/swagger.json", "MusicAppAPI V1");
+    // This is crucial for Lambda + API Gateway to handle the stage path correctly
+    c.RoutePrefix = "swagger"; 
+});
 
 // app.UseHttpsRedirection();
 
