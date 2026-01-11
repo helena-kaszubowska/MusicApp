@@ -1,14 +1,16 @@
 const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://localhost:5064/api";
+  process.env.REACT_APP_API_BASE_URL ||
+  "https://bbz40djmz4.execute-api.eu-north-1.amazonaws.com/default/api";
 
 export const API_ENDPOINTS = {
   albums: {
-    getAll: `${API_BASE_URL}/Albums`,
-    getById: (id) => `${API_BASE_URL}/Albums/${id}`,
-    search: (query) => `${API_BASE_URL}/Albums/search?query=${query}`,
-    create: `${API_BASE_URL}/Albums`,
-    update: (id) => `${API_BASE_URL}/Albums/${id}`,
-    delete: (id) => `${API_BASE_URL}/Albums/${id}`,
+    getAll: `${API_BASE_URL}/albums`,
+    getById: (id) => `${API_BASE_URL}/albums/${id}`,
+    search: (query) =>
+      `${API_BASE_URL}/albums/search?query=${encodeURIComponent(query)}`,
+    create: `${API_BASE_URL}/albums`,
+    update: (id) => `${API_BASE_URL}/albums/${id}`,
+    delete: (id) => `${API_BASE_URL}/albums/${id}`,
   },
   auth: {
     login: `${API_BASE_URL}/sign-in`,
