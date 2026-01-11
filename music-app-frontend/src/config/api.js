@@ -3,12 +3,13 @@ const API_BASE_URL =
 
 export const API_ENDPOINTS = {
   albums: {
-    getAll: `${API_BASE_URL}/Albums`,
-    getById: (id) => `${API_BASE_URL}/Albums/${id}`,
-    search: (query) => `${API_BASE_URL}/Albums/search?query=${query}`,
-    create: `${API_BASE_URL}/Albums`,
-    update: (id) => `${API_BASE_URL}/Albums/${id}`,
-    delete: (id) => `${API_BASE_URL}/Albums/${id}`,
+    getAll: `${API_BASE_URL}/albums`,
+    getById: (id) => `${API_BASE_URL}/albums/${id}`,
+    search: (query) =>
+      `${API_BASE_URL}/albums/search?query=${encodeURIComponent(query)}`,
+    create: `${API_BASE_URL}/albums`,
+    update: (id) => `${API_BASE_URL}/albums/${id}`,
+    delete: (id) => `${API_BASE_URL}/albums/${id}`,
   },
   auth: {
     login: `${API_BASE_URL}/sign-in`,
