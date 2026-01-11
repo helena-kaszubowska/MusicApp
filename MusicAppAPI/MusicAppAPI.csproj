@@ -15,8 +15,8 @@
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.15" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2"/>
-        <PackageReference Include="Amazon.Lambda.AspNetCoreServer.Hosting" Version="1.*" />
-        <PackageReference Include="Amazon.Lambda.Logging.AspNetCore" Version="4.*" /> 
+        <PackageReference Include="Amazon.Lambda.AspNetCoreServer.Hosting" Version="1.7.0" />
+        <PackageReference Include="AWS.Logger.AspNetCore" Version="3.5.0" />
     </ItemGroup>
 
 </Project>
