@@ -1,0 +1,50 @@
+name: Deploy (MusicApp)
+
+on:
+  push:
+    branches: ["aws"]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - run: dotnet restore MusicApp/MusicAppAPI/MusicAppAPI.csproj
+
+      - run: dotnet publish MusicApp/MusicAppAPI/MusicAppAPI.csproj -c Release -o publish
+
+      - run: |
+          cd publish
+          zip -r ../lambda.zip .
+
+      - run: |
+          aws lambda update-function-code \
+            --function-name "${{ secrets.LAMBDA_FUNCTION_NAME }}" \
+            --zip-file "fileb://lambda.zip"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: npm ci
+        working-directory: music-app-frontend
+
+      - run: npm run build
+        working-directory: music-app-frontend
+
+      - run: aws s3 sync music-app-frontend/dist "s3://${{ secrets.S3_BUCKET_NAME }}" --delete
