@@ -34,8 +34,9 @@ jobs:
 
       - run: |
           aws lambda update-function-code \
-            --function-name "${{ secrets.LAMBDA_FUNCTION_NAME }}" \
-            --zip-file "fileb://lambda.zip"
+            --region eu-north-1 \
+            --function-name MusicAppAPI \
+            --zip-file fileb://lambda.zip
 
       - uses: actions/setup-node@v4
         with:
