@@ -2,7 +2,7 @@ import React from "react";
 import { IoMdCloseCircle } from "react-icons/io";
 import toast from "react-hot-toast";
 import { albumService } from "../../services/albumService";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import Backdrop from "../common/Backdrop";
 
 const dropIn = {
