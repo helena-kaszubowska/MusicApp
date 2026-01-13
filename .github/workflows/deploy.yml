@@ -48,5 +48,5 @@ jobs:
       - run: npm run build
         working-directory: music-app-frontend
 
-      - run: aws s3 sync dist "s3://${{ secrets.S3_BUCKET_NAME }}" --delete
+      - run: aws s3 sync build "s3://${{ secrets.S3_BUCKET_NAME }}" --delete
         working-directory: music-app-frontend
