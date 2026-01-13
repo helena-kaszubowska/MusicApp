@@ -24,9 +24,9 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - run: dotnet restore MusicApp/MusicAppAPI/MusicAppAPI.csproj
+      - run: dotnet restore MusicAppAPI/MusicAppAPI.csproj
 
-      - run: dotnet publish MusicAppAPI/MusicAppAPI/MusicAppAPI.csproj -c Release -o publish
+      - run: dotnet publish MusicAppAPI/MusicAppAPI.csproj -c Release -o publish
 
       - run: |
           cd publish
@@ -47,4 +47,5 @@ jobs:
       - run: npm run build
         working-directory: music-app-frontend
 
-      - run: aws s3 sync music-app-frontend/dist "s3://${{ secrets.S3_BUCKET_NAME }}" --delete
+      - run: aws s3 sync dist "s3://${{ secrets.S3_BUCKET_NAME }}" --delete
+        working-directory: music-app-frontend
