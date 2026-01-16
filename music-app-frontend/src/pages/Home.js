@@ -23,7 +23,7 @@ const Home = () => {
     <div className="pb-20 overflow-visible">
       <div className="max-w-4xl mx-auto overflow-visible">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">Featured Albums</h2>
+          <h2 className="text-xl font-bold text-white">Best Albums</h2>
           <div className="w-[40rem]">
             <div className="bg-gray-200 p-2 rounded-lg cursor-text flex items-center shadow-md">
               <FaSearch className="text-gray-600 mr-2 h-4 w-4" />
