@@ -14,12 +14,16 @@ public class TrackAnalyticsService
             TrackId = message.TrackId
         });
 
-        if (message.TrackTitle != null) stats.TrackTitle = message.TrackTitle;
-        if (message.TrackArtist != null) stats.TrackArtist = message.TrackArtist;
-        
-        stats.DownloadCount++;
-        stats.LastDownloadedAt = message.DownloadedAt;
-        stats.Sources.Add(message.Source);
+        // Use a lock to ensure thread safety when updating mutable properties of the stats object
+        lock (stats)
+        {
+            if (message.TrackTitle != null) stats.TrackTitle = message.TrackTitle;
+            if (message.TrackArtist != null) stats.TrackArtist = message.TrackArtist;
+            
+            stats.DownloadCount++;
+            stats.LastDownloadedAt = message.DownloadedAt;
+            stats.Sources.Add(message.Source);
+        }
     }
 
     public IEnumerable<TrackStats> GetTopTracks(int count = 100)

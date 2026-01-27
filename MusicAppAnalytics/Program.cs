@@ -22,7 +22,10 @@ builder.Services.AddCors(options =>
         });
 });
 
+// Register Analytics Services as Singletons (to keep state in memory)
 builder.Services.AddSingleton<AlbumAnalyticsService>();
+builder.Services.AddSingleton<TrackAnalyticsService>();
+
 builder.Services.AddLogging(config =>
 {
     config.ClearProviders();
