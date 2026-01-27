@@ -43,7 +43,7 @@ public class UserController : ControllerBase
     }
 
     [Authorize]
-    [HttpDelete("users/{id}")]
+    [HttpDelete("[controller]/{id}")]
     public async Task<ActionResult> DeleteUserAsync(string id)
     {
         string? currentUserId = User.FindFirst("id")?.Value;

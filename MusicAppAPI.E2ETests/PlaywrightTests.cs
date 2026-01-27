@@ -62,7 +62,7 @@ public class PlaywrightTests : PlaywrightTest
         Assert.That(userId, Is.Not.Null.And.Not.Empty);
         
         // 3. Delete account
-        await _requestContext.DeleteAsync($"/api/users/{userId}", new APIRequestContextOptions
+        await _requestContext.DeleteAsync($"/api/user/{userId}", new APIRequestContextOptions
         {
             Headers = new Dictionary<string, string> { { "Authorization", $"Bearer {token}" } }
         });
@@ -202,7 +202,7 @@ public class PlaywrightTests : PlaywrightTest
 
     private async Task DeleteAccount(string userId, string token)
     {
-        await _requestContext.DeleteAsync($"/api/users/{userId}", new APIRequestContextOptions
+        await _requestContext.DeleteAsync($"/api/user/{userId}", new APIRequestContextOptions
         {
             Headers = new Dictionary<string, string> { { "Authorization", $"Bearer {token}" } }
         });
