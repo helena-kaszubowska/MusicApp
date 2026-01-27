@@ -1,0 +1,13 @@
+{
+  "name": "musicapp-frontend-e2e-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "playwright test --config=config/playwright.config.js",
+    "test:ui": "playwright test --ui --config=config/playwright.config.js",
+    "test:codegen": "playwright codegen http://localhost:3000"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}
