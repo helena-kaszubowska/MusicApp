@@ -54,6 +54,17 @@ const AlbumDetails = () => {
       setLoading(true);
       setError(null);
       const data = await albumService.getAlbumById(albumId);
+      // Backend zwraca Tracks (PascalCase) lub realTracks, mapujemy na tracks (camelCase) dla kompatybilności
+      if (data) {
+        // Backend zwraca Tracks (PascalCase), mapujemy na tracks (camelCase) dla kompatybilności
+        if (data.Tracks && !data.tracks) {
+          data.tracks = data.Tracks;
+        }
+        // Obsługa realTracks z MongoDB Lookup (jeśli Lookup zwrócił jako realTracks)
+        if (data.realTracks && !data.tracks) {
+          data.tracks = Array.isArray(data.realTracks) ? data.realTracks : [];
+        }
+      }
       setAlbum(data);
     } catch (error) {
       console.error("Failed to fetch album:", error);
