@@ -1,0 +1,26 @@
+{
+  "name": "musicapp-frontend-unit-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "react-scripts test --watchAll=false",
+    "test:watch": "react-scripts test"
+  },
+  "jest": {
+    "moduleNameMapper": {
+      "^.*/MusicAppFrontend/src/(.*)$": "<rootDir>/../MusicAppFrontend/src/$1",
+      "^react$": "<rootDir>/../MusicAppFrontend/node_modules/react",
+      "^react-dom$": "<rootDir>/../MusicAppFrontend/node_modules/react-dom",
+      "^react-router-dom$": "<rootDir>/../MusicAppFrontend/node_modules/react-router-dom"
+    }
+  },
+  "dependencies": {
+    "@testing-library/jest-dom": "^5.16.4",
+    "@testing-library/react": "^13.0.1",
+    "@testing-library/user-event": "^14.1.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.11.2",
+    "react-scripts": "5.0.1"
+  }
+}

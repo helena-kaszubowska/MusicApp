@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Search from '../../MusicAppFrontend/src/pages/Search';
 import { albumService } from '../../MusicAppFrontend/src/services/albumService';
@@ -26,16 +26,22 @@ describe('Search', () => {
     const mockSearch = jest.fn().mockResolvedValue([]);
     albumService.searchAlbums = mockSearch;
 
-    const user = userEvent.setup({ delay: null });
     render(<Search />);
 
-    await user.type(screen.getByPlaceholderText(/search albums/i), 'test');
+    const input = screen.getByPlaceholderText(/search albums/i);
+    
+    await act(async () => {
+      await userEvent.type(input, 'test', { delay: null });
+    });
+    
     expect(mockSearch).not.toHaveBeenCalled();
 
-    jest.advanceTimersByTime(150);
+    await act(async () => {
+      jest.advanceTimersByTime(150);
+    });
 
     await waitFor(() => {
       expect(mockSearch).toHaveBeenCalledWith('test');
-    });
+    }, { timeout: 3000 });
   });
 });

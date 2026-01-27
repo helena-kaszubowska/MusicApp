@@ -5,14 +5,20 @@ import { albumService } from '../../MusicAppFrontend/src/services/albumService';
 
 jest.mock('../../MusicAppFrontend/src/services/albumService');
 jest.mock('../../MusicAppFrontend/src/components/user/AlbumCard', () => {
-  return function MockAlbumCard({ album }) {
-    return (
-      <div>
-        <h3>{album.title}</h3>
-        <p>{album.artist}</p>
-        <img src={album.coverUrl || album.coverImage} alt={album.title} />
-      </div>
-    );
+  const MockAlbumCard = ({ album }) => (
+    <div>
+      <h3>{album.title}</h3>
+      <p>{album.artist}</p>
+      <img src={album.coverUrl || album.coverImage} alt={album.title} />
+    </div>
+  );
+  
+  const MockAddAlbumCard = () => <div>Add Album Card</div>;
+  
+  return {
+    __esModule: true,
+    default: MockAlbumCard,
+    AddAlbumCard: MockAddAlbumCard,
   };
 });
 
