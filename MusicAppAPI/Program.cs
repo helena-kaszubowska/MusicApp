@@ -1,6 +1,7 @@
 using System.Text;
 using EasyNetQ;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -16,6 +17,8 @@ var database = mongoClient.GetDatabase(Environment.GetEnvironmentVariable("DB_NA
 
 builder.Services.AddSingleton(database);
 builder.Services.AddSingleton(database.GetCollection<User>("users"));
+builder.Services.AddSingleton(database.GetCollection<Track>("tracks"));
+builder.Services.AddSingleton(database.GetCollection<Album>("albums"));
 
 // Register Password Hasher
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
@@ -102,6 +105,23 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Global Exception Handler
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        
+        var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>();
+        var exception = exceptionHandlerPathFeature?.Error;
+        
+        var errorMessage = exception?.Message ?? "An unexpected error occurred.";
+        // In production, you might want to hide the actual exception message
+        await context.Response.WriteAsync($"{{\"error\": \"{errorMessage}\"}}");
+    });
+});
 
 // app.UseHttpsRedirection();
 

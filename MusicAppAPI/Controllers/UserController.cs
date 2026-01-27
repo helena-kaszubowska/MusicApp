@@ -21,48 +21,24 @@ public class UserController : ControllerBase
     [HttpPost("sign-up")]
     public async Task<ActionResult> SignUpAsync([FromBody] SignData signData)
     {
-        try
-        {
-            return StatusCode(await _userService.RegisterAsync(signData.Email, signData.Password) == null 
-                ? StatusCodes.Status400BadRequest : StatusCodes.Status201Created);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
-        }
+        return StatusCode(await _userService.RegisterAsync(signData.Email, signData.Password) == null 
+            ? StatusCodes.Status400BadRequest : StatusCodes.Status201Created);
     }
     
     [HttpPost("sign-in")]
     public async Task<ActionResult<User>> SignInAsync([FromBody] SignData signData)
     {
-        try
-        {
-            User? authenticatedUser = await _userService.AuthenticateAsync(signData.Email, signData.Password);
-            return authenticatedUser == null ? StatusCode(StatusCodes.Status401Unauthorized) : Ok(authenticatedUser);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
-        }
+        User? authenticatedUser = await _userService.AuthenticateAsync(signData.Email, signData.Password);
+        return authenticatedUser == null ? StatusCode(StatusCodes.Status401Unauthorized) : Ok(authenticatedUser);
     }
 
     [Authorize(Roles = "admin")]
     [HttpPatch("[controller]/give-admin-rights")]
     public async Task<ActionResult> GiveAdminRightsAsync([FromBody] string email)
     {
-        try
-        {
-            return await _userService.SetRoleAsync(email, "admin")
-                ? StatusCode(StatusCodes.Status200OK)
-                : StatusCode(StatusCodes.Status400BadRequest);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
-        }
+        return await _userService.SetRoleAsync(email, "admin")
+            ? StatusCode(StatusCodes.Status200OK)
+            : StatusCode(StatusCodes.Status400BadRequest);
     }
     
     public class SignData
