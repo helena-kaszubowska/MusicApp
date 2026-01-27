@@ -1,17 +1,24 @@
 using System.Text;
 using EasyNetQ;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MongoDB.Driver;
+using MusicAppAPI.Models;
 using MusicAppAPI.Services;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Database connection
-builder.Services.AddSingleton(
-    new MongoClient($"mongodb+srv://{Environment.GetEnvironmentVariable("DB_USER")}:{Environment.GetEnvironmentVariable("DB_PASSWORD")}@mongocluster.yl7u1.mongodb.net/?retryWrites=true&w=majority&appName=MongoCluster")
-        .GetDatabase(Environment.GetEnvironmentVariable("DB_NAME")));
+var mongoClient = new MongoClient($"mongodb+srv://{Environment.GetEnvironmentVariable("DB_USER")}:{Environment.GetEnvironmentVariable("DB_PASSWORD")}@mongocluster.yl7u1.mongodb.net/?retryWrites=true&w=majority&appName=MongoCluster");
+var database = mongoClient.GetDatabase(Environment.GetEnvironmentVariable("DB_NAME"));
+
+builder.Services.AddSingleton(database);
+builder.Services.AddSingleton(database.GetCollection<User>("users"));
+
+// Register Password Hasher
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
 // JWT Configuration
 byte[] key = Encoding.ASCII.GetBytes(Environment.GetEnvironmentVariable("JWT_KEY")!);

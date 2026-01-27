@@ -10,47 +10,47 @@ namespace MusicAppAPI.Services;
 
 public class UserService : IUserService
 {
-    private readonly IMongoDatabase _database;
+    private readonly IMongoCollection<User> _usersCollection;
+    private readonly IPasswordHasher<User> _passwordHasher;
     
-    public UserService(IMongoDatabase database)
+    public UserService(IMongoCollection<User> usersCollection, IPasswordHasher<User> passwordHasher)
     {
-        _database = database;
+        _usersCollection = usersCollection;
+        _passwordHasher = passwordHasher;
     }
     
     public async Task<User?> RegisterAsync(string email, string password)
     {
-        IMongoCollection<User>? usersCollection = _database.GetCollection<User>("users");
-        
         // Check if a user with the specified email already exists    
         FilterDefinition<User>? filter = Builders<User>.Filter.Eq(u => u.Email, email);
-        if (await usersCollection.CountDocumentsAsync(filter) > 0) return null;
+        if (await _usersCollection.CountDocumentsAsync(filter) > 0) return null;
         
         User user = new()
         {
             Email = email,
             // Replace the password with a hash generated for it
-            Password = new PasswordHasher<object?>().HashPassword(null, password)
+            Password = _passwordHasher.HashPassword(null!, password)
         };
 
         // The first ever user automatically becomes an admin
-        long count = await usersCollection.CountDocumentsAsync(_ => true);
+        long count = await _usersCollection.CountDocumentsAsync(_ => true);
         if (count == 0) user.Roles = ["admin"];
         
-        await usersCollection.InsertOneAsync(user);
+        await _usersCollection.InsertOneAsync(user);
         return user;
     }
     
     public async Task<User?> AuthenticateAsync(string email, string password)
     {
-        IMongoCollection<User>? usersCollection = _database.GetCollection<User>("users");
-            
         // Check if a user with the specified email exists    
         FilterDefinition<User>? filter = Builders<User>.Filter.Eq(u => u.Email, email);
-        User? user = await usersCollection.Find(filter).FirstOrDefaultAsync();
+        
+        var user = await _usersCollection.Find(filter).FirstOrDefaultAsync();
+        
         if (user == null) return null;
         
         // Check if the provided password is correct    
-        PasswordVerificationResult passwordVerificationResult = new PasswordHasher<object?>().VerifyHashedPassword(null, user.Password!, password);
+        PasswordVerificationResult passwordVerificationResult = _passwordHasher.VerifyHashedPassword(null!, user.Password!, password);
             
         // If the password is correct, add the JWT token to the user object
         if (passwordVerificationResult == PasswordVerificationResult.Failed) 
@@ -62,14 +62,12 @@ public class UserService : IUserService
 
     public async Task<bool> SetRoleAsync(string email, string role)
     {
-        IMongoCollection<User>? usersCollection = _database.GetCollection<User>("users");
-        
         // Find a user with the specified email
         FilterDefinition<User>? filter = Builders<User>.Filter.Eq(u => u.Email, email);
         // Add the role only if it doesn't exist already (avoid duplicate roles)
-        UpdateDefinition<User>? update = Builders<User>.Update.AddToSet(user=> user.Roles, role);
+        UpdateDefinition<User>? update = Builders<User>.Update.AddToSet(user => user.Roles, role);
         // If the user is found, the role has been assigned either previously or now
-        return (await usersCollection.UpdateOneAsync(filter, update)).MatchedCount > 0;
+        return (await _usersCollection.UpdateOneAsync(filter, update)).MatchedCount > 0;
     }
     
     private string CreateToken(User user)
