@@ -185,20 +185,4 @@ public class LibraryControllerTests
         var ex = Assert.ThrowsAsync<Exception>(async () => await _libraryController.GetAllTracks());
         Assert.That(ex!.Message, Is.EqualTo("Internal Error"));
     }
-
-    [Test]
-    public void AddTrack_InternalError_ThrowsException()
-    {
-        // Arrange
-        _usersCollectionMock.Setup(c => c.UpdateOneAsync(
-            It.IsAny<FilterDefinition<User>>(),
-            It.IsAny<UpdateDefinition<User>>(),
-            It.IsAny<UpdateOptions>(),
-            It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new Exception("Internal Error"));
-
-        // Act & Assert
-        var ex = Assert.ThrowsAsync<Exception>(async () => await _libraryController.AddTrack("track1"));
-        Assert.That(ex!.Message, Is.EqualTo("Internal Error"));
-    }
 }

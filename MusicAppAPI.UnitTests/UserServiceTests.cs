@@ -241,4 +241,48 @@ public class UserServiceTests
         // Assert
         Assert.That(result, Is.False);
     }
+
+    [Test]
+    public async Task DeleteUserAsync_UserExists_ReturnsTrue()
+    {
+        // Arrange
+        var deleteResultMock = new Mock<DeleteResult>();
+        deleteResultMock.Setup(r => r.DeletedCount).Returns(1);
+        deleteResultMock.Setup(r => r.IsAcknowledged).Returns(true);
+
+        _collectionMock.Setup(c => c.DeleteOneAsync(
+            It.IsAny<FilterDefinition<User>>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(deleteResultMock.Object);
+
+        // Act
+        var result = await _userService.DeleteUserAsync("userId");
+
+        // Assert
+        Assert.That(result, Is.True);
+        
+        _collectionMock.Verify(c => c.DeleteOneAsync(
+            It.IsAny<FilterDefinition<User>>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task DeleteUserAsync_UserDoesNotExist_ReturnsFalse()
+    {
+        // Arrange
+        var deleteResultMock = new Mock<DeleteResult>();
+        deleteResultMock.Setup(r => r.DeletedCount).Returns(0);
+        deleteResultMock.Setup(r => r.IsAcknowledged).Returns(true);
+
+        _collectionMock.Setup(c => c.DeleteOneAsync(
+            It.IsAny<FilterDefinition<User>>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(deleteResultMock.Object);
+
+        // Act
+        var result = await _userService.DeleteUserAsync("unknownId");
+
+        // Assert
+        Assert.That(result, Is.False);
+    }
 }

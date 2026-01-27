@@ -7,4 +7,5 @@ public interface IUserService
     Task<User?> AuthenticateAsync(string email, string password);
     Task<User?> RegisterAsync(string email, string password);
     Task<bool> SetRoleAsync(string email, string role);
+    Task<bool> DeleteUserAsync(string userId);
 }
