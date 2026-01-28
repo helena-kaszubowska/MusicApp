@@ -115,17 +115,17 @@ public class UserControllerTests
     }
 
     [Test]
-    public void SignInAsync_ExceptionThrown_ThrowsException()
+    public void SignInAsync_InternalError_ThrowsException()
     {
         // Arrange
         var signData = new UserController.SignData { Email = "error@example.com", Password = "password" };
 
         _userServiceMock.Setup(s => s.AuthenticateAsync(signData.Email, signData.Password))
-            .ThrowsAsync(new Exception("Auth error"));
+            .ThrowsAsync(new Exception("Internal error"));
 
         // Act & Assert
         var ex = Assert.ThrowsAsync<Exception>(async () => await _userController.SignInAsync(signData));
-        Assert.That(ex!.Message, Is.EqualTo("Auth error"));
+        Assert.That(ex!.Message, Is.EqualTo("Internal error"));
     }
 
     // --- GiveAdminRightsAsync Tests ---
@@ -167,16 +167,16 @@ public class UserControllerTests
     }
 
     [Test]
-    public void GiveAdminRightsAsync_ExceptionThrown_ThrowsException()
+    public void GiveAdminRightsAsync_InternalError_ThrowsException()
     {
         // Arrange
         const string email = "error@example.com";
 
         _userServiceMock.Setup(s => s.SetRoleAsync(email, "admin"))
-            .ThrowsAsync(new Exception("Role error"));
+            .ThrowsAsync(new Exception("Internal error"));
 
         // Act & Assert
         var ex = Assert.ThrowsAsync<Exception>(async () => await _userController.GiveAdminRightsAsync(email));
-        Assert.That(ex!.Message, Is.EqualTo("Role error"));
+        Assert.That(ex!.Message, Is.EqualTo("Internal error"));
     }
 }
