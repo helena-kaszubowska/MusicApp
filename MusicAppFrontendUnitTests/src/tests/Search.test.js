@@ -36,9 +36,7 @@ describe('Search', () => {
     
     expect(mockSearch).not.toHaveBeenCalled();
 
-    await act(async () => {
-      jest.advanceTimersByTime(150);
-    });
+    jest.advanceTimersByTime(150);
 
     await waitFor(() => {
       expect(mockSearch).toHaveBeenCalledWith('test');

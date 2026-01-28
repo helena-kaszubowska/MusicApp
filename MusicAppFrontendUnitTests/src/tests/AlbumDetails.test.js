@@ -56,11 +56,16 @@ describe('AlbumDetails', () => {
     expect(screen.getAllByText(/add to library/i).length).toBeGreaterThanOrEqual(3);
   });
 
-  // Test 2: Checks that album details are not displayed while API request is still loading
-  it('shows loading state', () => {
+  // Test 2: Verifies that loading skeleton is displayed while API request is in progress
+  it('shows loading skeleton', () => {
     albumService.getAlbumById.mockImplementation(() => new Promise(() => {}));
-    render(<AlbumDetails />);
+    const { container } = render(<AlbumDetails />);
 
+    // Verify that skeleton loading elements are present (elements with animate-pulse class)
+    const skeletonElements = container.querySelectorAll('.animate-pulse');
+    expect(skeletonElements.length).toBeGreaterThan(0);
+    
+    // Verify that actual album data is not displayed
     expect(screen.queryByText('Test Album')).not.toBeInTheDocument();
     expect(screen.queryByText('Track 1')).not.toBeInTheDocument();
   });

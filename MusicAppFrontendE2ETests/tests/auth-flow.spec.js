@@ -47,7 +47,6 @@ test.describe('Auth Flow', () => {
 
   // Test 4: Logout (verify token removed from localStorage and redirect to login)
   test('Logout', async ({ page }) => {
-    // 1. First, log in the user
     const timestamp = Date.now();
     const email = `test${timestamp}@example.com`;
     const password = 'TestPassword123!';

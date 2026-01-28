@@ -7,7 +7,12 @@ __MusicApp__ is a modern music streaming-like application made by [@deepinnothin
 
 The backend is a REST API developed using ASP.NET MVC (C#), MongoDB, and JWT-based authentication. The API provides functionalities to manage users, music tracks, and albums, supporting operations like data retrieval, user authentication, and resource management.
 
-The frontend is based on the React and Tailwind CSS frameworks ([click here for more information](https://github.com/deepinnothing/MusicApp/tree/master/music-app-frontend#readme)). Note that not every endpoint is implemented in the frontend app.
+Tests are organized in there respective subfolders. For instance, unit tests for the API are located under `MusicAppAPI.UnitTests`, end-to-end tests are under `MusicAppAPI.E2ETests`, and so on.
+Tests cover most of the application functionality, there are 12 end-to-end tests and over 50 unit tests. Most unit tests rely on mocking, as it's needed to workaround the dependency on MongoDB, for example.
+__NUnit__, __Moq__, and __Playwright__ are used to test application's backend, and __Vitest__ with __Playwright__ are used for frontend.
+An example of a parametric NUnit test can be found in the `AlbumsControllerTests.cs`.
+
+The frontend is based on the React and Tailwind CSS frameworks ([click here for more information](https://github.com/deepinnothing/MusicApp/tree/master/MusicAppFrontend#readme)). Note that not every endpoint is implemented in the frontend app.
 
 The application's API uses environment variables for configuration. They can be changed in `Properties/launchSettings.json`
 
