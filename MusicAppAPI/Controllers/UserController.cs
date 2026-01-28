@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -39,6 +40,24 @@ public class UserController : ControllerBase
         return await _userService.SetRoleAsync(email, "admin")
             ? StatusCode(StatusCodes.Status200OK)
             : StatusCode(StatusCodes.Status400BadRequest);
+    }
+
+    [Authorize]
+    [HttpDelete("[controller]/{id}")]
+    public async Task<ActionResult> DeleteUserAsync(string id)
+    {
+        string? currentUserId = User.FindFirst("id")?.Value;
+        bool isAdmin = User.IsInRole("admin");
+
+        // Allow deletion if user is admin OR if user is deleting their own account
+        if (!isAdmin && currentUserId != id)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        return await _userService.DeleteUserAsync(id)
+            ? StatusCode(StatusCodes.Status200OK)
+            : StatusCode(StatusCodes.Status404NotFound);
     }
     
     public class SignData

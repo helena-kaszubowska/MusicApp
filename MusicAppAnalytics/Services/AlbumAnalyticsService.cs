@@ -16,9 +16,13 @@ public class AlbumAnalyticsService
             AlbumArtist = message.AlbumArtist
         });
 
-        stats.ViewCount++;
-        stats.LastViewedAt = message.ViewedAt;
-        stats.Sources.Add(message.Source);
+        // Use a lock to ensure thread safety when updating mutable properties of the stats object
+        lock (stats)
+        {
+            stats.ViewCount++;
+            stats.LastViewedAt = message.ViewedAt;
+            stats.Sources.Add(message.Source);
+        }
     }
 
     public IEnumerable<AlbumStats> GetTopAlbums(int count = 10)

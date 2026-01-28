@@ -69,6 +69,13 @@ public class UserService : IUserService
         // If the user is found, the role has been assigned either previously or now
         return (await _usersCollection.UpdateOneAsync(filter, update)).MatchedCount > 0;
     }
+
+    public async Task<bool> DeleteUserAsync(string userId)
+    {
+        FilterDefinition<User> filter = Builders<User>.Filter.Eq(u => u.Id, userId);
+        DeleteResult result = await _usersCollection.DeleteOneAsync(filter);
+        return result.DeletedCount > 0;
+    }
     
     private string CreateToken(User user)
     {
