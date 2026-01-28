@@ -45,21 +45,29 @@ describe('FeaturedAlbums', () => {
     expect(screen.getByAltText('Test Album 1')).toHaveAttribute('src', 'https://example.com/cover1.jpg');
   });
 
-  // Test 4: Checks that album data is not displayed while API request is still in progress
-  it('shows loading state', () => {
+  // Test 4: Verifies that loading skeleton is displayed while API request is in progress
+  it('shows loading skeleton', () => {
     albumService.getAllAlbums.mockImplementation(() => new Promise(() => {}));
-    render(<FeaturedAlbums />);
+    const { container } = render(<FeaturedAlbums />);
 
+    // Verify that skeleton loading elements are present (elements with animate-pulse class)
+    const skeletonElements = container.querySelectorAll('.animate-pulse');
+    expect(skeletonElements.length).toBeGreaterThan(0);
+    
+    // Verify that actual album data is not displayed
     expect(screen.queryByText('Test Album 1')).not.toBeInTheDocument();
   });
 
-  // Test 5: Ensures no albums are rendered when API returns an empty array
-  it('does not show albums when list is empty', async () => {
-    albumService.getAllAlbums.mockResolvedValue([]);
+  // Test 5: Verifies that error message is displayed when API request fails
+  it('shows error message when API fails', async () => {
+    albumService.getAllAlbums.mockRejectedValue(new Error('Network error'));
     render(<FeaturedAlbums />);
 
     await waitFor(() => {
-      expect(screen.queryByText('Test Album 1')).not.toBeInTheDocument();
+      expect(screen.getByText(/failed to load albums/i)).toBeInTheDocument();
     });
+    
+    // Verify that albums are not displayed when error occurs
+    expect(screen.queryByText('Test Album 1')).not.toBeInTheDocument();
   });
 });

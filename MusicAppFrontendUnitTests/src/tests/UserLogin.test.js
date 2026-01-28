@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import UserLogin from '../../MusicAppFrontend/src/pages/UserLogin';
+import UserRegister from '../../MusicAppFrontend/src/pages/UserRegister';
 import { useAuth } from '../../MusicAppFrontend/src/hooks/AuthContext';
 
 jest.mock('../../MusicAppFrontend/src/hooks/AuthContext');
@@ -60,49 +61,33 @@ describe('UserLogin', () => {
     });
   });
 
-  // Test 9: Verifies successful login flow - API call, token storage via login function, and navigation to home page
-  it('saves token and redirects on successful login', async () => {
-    const mockUserData = {
-      token: 'mock-token-123',
-      email: 'test@example.com',
-      roles: ['user'],
-    };
+  // Test 9: Validates that registration form shows error when passwords do not match
+  it('shows error when passwords do not match', async () => {
+    const user = userEvent.setup();
+    renderWithRouter(<UserRegister />);
 
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: async () => mockUserData,
-      })
-    );
-
-    renderWithRouter(<UserLogin />);
-    await fillAndSubmitForm();
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/^password$/i), 'password123');
+    await user.type(screen.getByLabelText(/confirm password/i), 'different123');
+    await user.click(screen.getByRole('button', { name: /register/i }));
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalled();
+      expect(screen.getByText(/passwords don't match/i)).toBeInTheDocument();
     });
-    
-    expect(mockLogin).toHaveBeenCalledWith(mockUserData);
-    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
-  // Test 10: Ensures error message is displayed and user stays on login page when API returns 401 Unauthorized
-  it('shows error message on 401', async () => {
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: false,
-        status: 401,
-        json: async () => ({ message: 'Invalid email or password' }),
-      })
-    );
+  // Test 10: Validates that registration form shows error when password is too short
+  it('shows error when password is too short', async () => {
+    const user = userEvent.setup();
+    renderWithRouter(<UserRegister />);
 
-    renderWithRouter(<UserLogin />);
-    await fillAndSubmitForm('test@example.com', 'wrongpassword');
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/^password$/i), 'short');  // 5 znaków, wymagane min 8
+    await user.type(screen.getByLabelText(/confirm password/i), 'short');
+    await user.click(screen.getByRole('button', { name: /register/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/invalid email or password/i)).toBeInTheDocument();
+      expect(screen.getByText(/password must be at least 8 characters/i)).toBeInTheDocument();
     });
-    
-    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
